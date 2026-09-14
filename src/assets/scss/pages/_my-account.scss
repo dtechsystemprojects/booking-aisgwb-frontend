@@ -1,0 +1,259 @@
+// My Account Page SCSS
+
+.my-account-wrapper {
+    padding-top: 30px;
+    padding-bottom: 60px;
+}
+
+// Profile Header Card
+.account-header-card {
+    background: linear-gradient(135deg, #17365d 0%, #0d233e 100%);
+    border-radius: 16px;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(23, 54, 93, 0.15);
+
+    &::before {
+        content: "";
+        position: absolute;
+        top: -50px;
+        right: -50px;
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        pointer-events: none;
+    }
+}
+
+.account-avatar-wrapper {
+    position: relative;
+    width: 90px;
+    height: 90px;
+
+    .account-avatar {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    }
+
+    .avatar-upload-btn {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: #ed0000;
+        color: #fff;
+        border: 2px solid #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+            background: #c50000;
+            transform: scale(1.08);
+        }
+    }
+}
+
+// Custom Nav Tabs
+.account-nav-pills {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e9ecef;
+    margin-bottom: 24px;
+
+    .nav-link {
+        color: #556070;
+        font-weight: 600;
+        font-size: 15px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+
+        svg {
+            font-size: 19px;
+            color: #7b8794;
+            transition: color 0.25s ease;
+        }
+
+        &:hover {
+            color: #17365d;
+            background-color: #f8fafc;
+
+            svg {
+                color: #17365d;
+            }
+        }
+
+        &.active {
+            color: #ffffff;
+            background: linear-gradient(135deg, #17365d 0%, #1e4577 100%);
+            box-shadow: 0 4px 12px rgba(23, 54, 93, 0.25);
+
+            svg {
+                color: #ffffff;
+            }
+        }
+    }
+}
+
+// Content Cards
+.account-content-card {
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+
+    .card-header-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #17365d;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+}
+
+// Digital Membership Card
+.membership-card-visual {
+    background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+    border-radius: 18px;
+    padding: 30px;
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 28px rgba(15, 32, 39, 0.3);
+
+    .card-chip {
+        width: 45px;
+        height: 32px;
+        background: linear-gradient(135deg, #ffe066 0%, #d4af37 100%);
+        border-radius: 6px;
+        opacity: 0.9;
+    }
+
+    .card-logo {
+        font-weight: 800;
+        letter-spacing: 1px;
+        color: #ffffff;
+        font-size: 20px;
+    }
+
+    .member-id-code {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 22px;
+        letter-spacing: 3px;
+        font-weight: 700;
+        color: #f1f5f9;
+        margin: 20px 0;
+    }
+
+    .card-watermark {
+        position: absolute;
+        right: -20px;
+        bottom: -30px;
+        font-size: 140px;
+        opacity: 0.05;
+        color: #ffffff;
+        pointer-events: none;
+    }
+}
+
+// Benefits Grid
+.benefit-item {
+    padding: 16px;
+    border-radius: 10px;
+    background-color: #f8fafc;
+    border: 1px solid #edf2f7;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .benefit-icon-wrapper {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        background: rgba(23, 54, 93, 0.08);
+        color: #17365d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+}
+
+// Stats Widget Card
+.stat-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+}
+
+// Tables styling
+.account-table {
+    th {
+        background-color: #f1f5f9;
+        color: #475569;
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 14px 16px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    td {
+        padding: 16px;
+        vertical-align: middle;
+        color: #1e293b;
+        font-size: 14px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+}
+
+// Responsive tweaks
+@media (max-width: 991.98px) {
+    .account-nav-pills {
+        flex-wrap: wrap;
+
+        .nav-link {
+            width: 100%;
+            justify-content: flex-start;
+        }
+    }
+}
