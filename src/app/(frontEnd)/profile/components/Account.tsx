@@ -61,7 +61,8 @@ const Account = () => {
 
   useEffect(() => {
     if (user && (user.id || user._id)) {
-      dispatch(fetchMyMembership(user.id || user._id));
+      const userId = (user.id || user._id) as string;
+      dispatch(fetchMyMembership(userId));
     }
   }, [user, dispatch]);
 
