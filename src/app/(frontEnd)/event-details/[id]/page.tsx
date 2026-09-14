@@ -4,9 +4,8 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Event Details" };
 
-export default async function Page({ params }: { params: { id: string } | Promise<{ id: string }> }) {
-    // Await params to support both Next.js 13/14 and Next.js 15+ routing
-    const resolvedParams = await Promise.resolve(params);
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+    const resolvedParams = await params;
 
     return <EventDetailsClient eventId={resolvedParams.id} />;
 }
