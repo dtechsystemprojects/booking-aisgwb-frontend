@@ -83,7 +83,7 @@ const BookingListContent: React.FC = () => {
       
       const provisionalTxn = {
         id: booking._id || (booking as any).id,
-        transactionRef: matchedTxn?.transactionRef || booking.transactionRef || "N/A",
+        transactionRef: matchedTxn?.transactionRef || (booking as any).transactionRef || "N/A",
         date: dayjs(booking.createdAt).format('DD MMM YYYY, hh:mm A'),
         description: `Booking for ${booking.eventId?.title || 'Event'}`,
         paymentMethod: booking.paymentMethod || "N/A",

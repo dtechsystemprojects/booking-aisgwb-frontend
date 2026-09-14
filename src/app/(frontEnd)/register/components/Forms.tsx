@@ -61,6 +61,7 @@ const Forms = () => {
         sex,
         email: email.trim(),
         mobile: mobileNo.trim(),
+        username: email.trim(),
         password: "TempPassword123!",
       };
 

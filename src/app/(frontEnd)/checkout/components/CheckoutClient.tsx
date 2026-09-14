@@ -94,7 +94,7 @@ const CheckoutClient = () => {
                     if (data.tickets && data.tickets.length > 0) {
                         data.tickets.forEach((t: any) => {
                             const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
-                            const tGroupIdStr = t.groupId?._id || t.groupId || "";
+                            const tGroupIdStr = (t.groupId as any)?._id || t.groupId || "";
                             const isPrimary = tGroupIdStr !== accPersonGroupId && !t.name?.toLowerCase().includes('accompanying');
 
                             for (let i = 0; i < t.quantity; i++) {

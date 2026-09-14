@@ -130,7 +130,7 @@ export const resendBookingInvoice = createAsyncThunk('bookings/resendBookingInvo
   }
 });
 
-export const fetchEventAttendees = createAsyncThunk('bookings/fetchEventAttendees', async (eventId?: string, { rejectWithValue }) => {
+export const fetchEventAttendees = createAsyncThunk('bookings/fetchEventAttendees', async (eventId: string | undefined, { rejectWithValue }) => {
   try {
     let url = `${BASE_URL}/admin/attendees?limit=10000`;
     if (eventId) url += `&eventId=${eventId}`;

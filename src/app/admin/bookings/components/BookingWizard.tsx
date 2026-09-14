@@ -225,7 +225,7 @@ const BookingWizard = () => {
                   if (aUserId === selectedUserId) {
                       const aTicketId = a.ticketId?._id || a.ticketId?.id || a.ticketId;
                       const relatedTicket = activeTickets.find((t: any) => t._id === aTicketId || t.id === aTicketId);
-                      const tGroupId = relatedTicket?.groupId?._id || relatedTicket?.groupId || (a.ticketId?.groupId?._id || a.ticketId?.groupId);
+                      const tGroupId = (relatedTicket?.groupId as any)?._id || relatedTicket?.groupId || ((a.ticketId?.groupId as any)?._id || a.ticketId?.groupId);
                       if (tGroupId && tGroupId !== accPersonGroupId) {
                           hasPastPrimaryTicket = true;
                           break;
@@ -309,7 +309,7 @@ const BookingWizard = () => {
 
     for (const t of selectedTicketObjects) {
         const ticketGroupId = typeof t.groupId === 'object' && t.groupId !== null
-            ? t.groupId._id
+            ? (t.groupId as any)._id
             : t.groupId;
             
         if (ticketGroupId === accPersonGroupId) {
@@ -357,7 +357,7 @@ const BookingWizard = () => {
         if (aUserId === selectedUserId) {
             const aTicketId = a.ticketId?._id || a.ticketId?.id || a.ticketId;
             const relatedTicket = activeTickets.find((t: any) => t._id === aTicketId || t.id === aTicketId);
-            const ticketGroupId = relatedTicket?.groupId?._id || relatedTicket?.groupId || (a.ticketId?.groupId?._id || a.ticketId?.groupId);
+            const ticketGroupId = (relatedTicket?.groupId as any)?._id || relatedTicket?.groupId || ((a.ticketId?.groupId as any)?._id || a.ticketId?.groupId);
             if (ticketGroupId && ticketGroupId !== accPersonGroupId) {
                 hasPastPrimaryTicket = true;
                 break;

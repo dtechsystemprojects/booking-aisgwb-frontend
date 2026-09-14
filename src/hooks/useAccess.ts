@@ -31,7 +31,7 @@ export const useAccess = (moduleName: string): AccessControl => {
   }
 
   // Super Admin bypass
-  if (user?.groupId === "GRP-1" || user?.groupName === "Super Admin" || user?.group === "Super Admin") {
+  if (user?.groupId === "GRP-1" || user?.groupName === "Super Admin" || (user as any)?.group === "Super Admin") {
     return { read: true, write: true, delete: true, export: true };
   }
 

@@ -71,7 +71,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
         
         if (delta > 0 && ticketToAdd) {
             const ticketGroupId = typeof ticketToAdd.groupId === 'object' && ticketToAdd.groupId !== null
-                ? ticketToAdd.groupId._id
+                ? (ticketToAdd.groupId as any)._id
                 : ticketToAdd.groupId;
             const memberGroupId = process.env.NEXT_PUBLIC_MEMBER_GROUP_ID;
             const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
@@ -81,7 +81,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
             if (isPrimaryPass) {
                 const otherPrimarySelected = tickets.find(t => {
                     const gId = typeof t.groupId === 'object' && t.groupId !== null
-                        ? t.groupId._id
+                        ? (t.groupId as any)._id
                         : t.groupId;
                     const isOtherPrimary = gId && gId !== accPersonGroupId;
                     return isOtherPrimary && (t.id !== id && t._id !== id) && (quantities[t.id ?? t._id ?? ''] || 0) > 0;
@@ -430,7 +430,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                 const selectedTickets = validTickets.filter(t => (quantities[t.id] || 0) > 0);
 
                                                 // Resolve each ticket's groupId (may be object or plain string)
-                                                const resolveGId = (t: any): string => (t.groupId?._id || t.groupId || "") as string;
+                                                const resolveGId = (t: any): string => ((t.groupId as any)?._id || t.groupId || "") as string;
 
                                                 // Separate into primary passes and accompanying person passes
                                                 const primaryPasses = selectedTickets.filter(t => {
