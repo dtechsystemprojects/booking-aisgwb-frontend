@@ -18,12 +18,13 @@ const Account = () => {
   const { user, groups, loading } = useSelector((state: RootState) => state.frontendUser);
 
   // Profile Form State
+  const anyUserInit = user as any;
   const [profile, setProfile] = useState({
-    name: user?.name || user?.firstName ? `${user?.firstName || ''} ${user?.lastName || ''}`.trim() : "",
-    username: user?.username || "",
-    email: user?.email || "",
-    mobile: user?.mobile || user?.phone || "",
-    sex: user?.sex || "",
+    name: anyUserInit?.name || anyUserInit?.firstName ? `${anyUserInit?.firstName || ''} ${anyUserInit?.lastName || ''}`.trim() : "",
+    username: anyUserInit?.username || "",
+    email: anyUserInit?.email || "",
+    mobile: anyUserInit?.mobile || anyUserInit?.phone || "",
+    sex: anyUserInit?.sex || "",
   });
 
   useEffect(() => {
@@ -33,13 +34,14 @@ const Account = () => {
 
   useEffect(() => {
     if (user) {
+      const anyUser = user as any;
       setProfile((prev) => ({
         ...prev,
-        name: user.name || (user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : prev.name),
-        username: user.username || prev.username,
-        email: user.email || prev.email,
-        mobile: user.mobile || user.phone || prev.mobile,
-        sex: user.sex || prev.sex,
+        name: anyUser.name || (anyUser.firstName ? `${anyUser.firstName} ${anyUser.lastName || ''}`.trim() : prev.name),
+        username: anyUser.username || prev.username,
+        email: anyUser.email || prev.email,
+        mobile: anyUser.mobile || anyUser.phone || prev.mobile,
+        sex: anyUser.sex || prev.sex,
       }));
     }
   }, [user]);

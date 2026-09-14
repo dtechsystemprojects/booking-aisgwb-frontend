@@ -105,7 +105,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                             for (const bt of b.tickets || []) {
                                 const bTicketId = bt.ticketId?._id || bt.ticketId?.id || bt.ticketId;
                                 const relatedTicket = tickets.find((t: any) => t._id === bTicketId || t.id === bTicketId);
-                                const tGroupId = relatedTicket?.groupId?._id || relatedTicket?.groupId;
+                                const tGroupId = (relatedTicket?.groupId as any)?._id || relatedTicket?.groupId;
                                 if (tGroupId && tGroupId !== accPersonGroupId) {
                                     hasPastPrimaryTicket = true;
                                     break;
@@ -416,7 +416,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                         for (const bt of b.tickets || []) {
                                                             const bTicketId = bt.ticketId?._id || bt.ticketId?.id || bt.ticketId;
                                                             const relatedTicket = tickets.find((t: any) => t._id === bTicketId || t.id === bTicketId);
-                                                            const ticketGroupId = relatedTicket?.groupId?._id || relatedTicket?.groupId;
+                                                            const ticketGroupId = (relatedTicket?.groupId as any)?._id || relatedTicket?.groupId;
                                                             if (ticketGroupId && ticketGroupId !== accPersonGroupId) {
                                                                 hasPastPrimaryTicket = true;
                                                                 break;
