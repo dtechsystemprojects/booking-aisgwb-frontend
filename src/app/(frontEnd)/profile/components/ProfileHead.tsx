@@ -47,7 +47,7 @@ const ProfileHead = () => {
     formData.append("folder", "profile");
 
     try {
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/local-api/upload", {
         method: "POST",
         body: formData,
       });
@@ -106,7 +106,7 @@ const ProfileHead = () => {
       await dispatch(updateFrontendProfile({ ...user, avatar: "" })).unwrap();
       
       // Delete from local file system (Next.js public folder)
-      await fetch(`/api/upload?fileUrl=${encodeURIComponent(avatarUrl)}`, {
+      await fetch(`/local-api/upload?fileUrl=${encodeURIComponent(avatarUrl)}`, {
         method: "DELETE",
       });
       
@@ -126,7 +126,7 @@ const ProfileHead = () => {
       return url;
     }
     
-    // If the url already starts with a slash (like from our /api/upload route which returns /uploads/profile/...)
+    // If the url already starts with a slash (like from our /local-api/upload route which returns /uploads/profile/...)
     // Next.js <Image> works perfectly with root-relative paths for items in the public directory.
     if (url.startsWith("/")) {
       return url;

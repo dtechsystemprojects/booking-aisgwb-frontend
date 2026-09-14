@@ -164,7 +164,7 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
       const form = new FormData();
       form.append("file", file);
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/local-api/upload", {
         method: "POST",
         body: form,
       });
@@ -193,7 +193,7 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
   const removeImage = async (field: "logo" | "banner", currentUrl: string) => {
     if (currentUrl && currentUrl.includes("/uploads/")) {
       try {
-        await fetch(`/api/upload?fileUrl=${encodeURIComponent(currentUrl)}`, {
+        await fetch(`/local-api/upload?fileUrl=${encodeURIComponent(currentUrl)}`, {
           method: "DELETE",
         });
         toast.success("Image removed successfully");
