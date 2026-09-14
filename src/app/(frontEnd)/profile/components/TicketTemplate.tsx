@@ -111,21 +111,21 @@ export const TicketTemplate = forwardRef<HTMLDivElement, TicketTemplateProps>(({
 
       {/* Row 1: Booked By, Membership ID, Price */}
       <Row className="mb-0">
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '90px', fontSize: '12px', textTransform: 'uppercase' }}>BOOKED BY :</span>
+        <Col xs={4}>
+          <div className="d-flex flex-column mb-3">
+            <span className="fw-bold text-dark" style={{ fontSize: '11px', textTransform: 'uppercase' }}>BOOKED BY</span>
             <span className="text-muted" style={{ fontSize: '13px', wordBreak: 'break-word' }}>{user?.name || 'N/A'}</span>
           </div>
         </Col>
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '115px', fontSize: '12px', textTransform: 'uppercase' }}>MEMBERSHIP ID :</span>
+        <Col xs={4}>
+          <div className="d-flex flex-column mb-3">
+            <span className="fw-bold text-dark" style={{ fontSize: '11px', textTransform: 'uppercase' }}>MEMBERSHIP ID</span>
             <span className="text-muted" style={{ fontSize: '13px', wordBreak: 'break-word' }}>{user?.memberId || 'N/A'}</span>
           </div>
         </Col>
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '60px', fontSize: '12px', textTransform: 'uppercase' }}>PRICE :</span>
+        <Col xs={4}>
+          <div className="d-flex flex-column mb-3">
+            <span className="fw-bold text-dark" style={{ fontSize: '11px', textTransform: 'uppercase' }}>PRICE</span>
             <span className="text-muted" style={{ fontSize: '13px' }}>
               {attendee.ticketPrice == 0 || !attendee.ticketPrice ? "FREE" : `₹ ${attendee.ticketPrice}`}
             </span>
@@ -135,47 +135,47 @@ export const TicketTemplate = forwardRef<HTMLDivElement, TicketTemplateProps>(({
 
       {/* Row 2: Attendee, Age, Relation */}
       <Row className="mb-0">
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '90px', fontSize: '12px', textTransform: 'uppercase' }}>ATTENDEE :</span>
+        <Col xs={4}>
+          <div className="d-flex flex-column mb-3">
+            <span className="fw-bold text-dark" style={{ fontSize: '11px', textTransform: 'uppercase' }}>ATTENDEE</span>
             <span className="text-muted" style={{ fontSize: '13px', wordBreak: 'break-word' }}>{attendee.name}</span>
           </div>
         </Col>
-        {attendee.age && (
-          <Col sm={4}>
-            <div className="d-flex mb-3">
-              <span className="fw-bold text-dark" style={{ width: '60px', fontSize: '12px', textTransform: 'uppercase' }}>AGE :</span>
+        {attendee.age ? (
+          <Col xs={4}>
+            <div className="d-flex flex-column mb-3">
+              <span className="fw-bold text-dark" style={{ fontSize: '11px', textTransform: 'uppercase' }}>AGE</span>
               <span className="text-muted" style={{ fontSize: '13px' }}>{attendee.age}</span>
             </div>
           </Col>
-        )}
-        {attendee.relation && (
-          <Col sm={4}>
-            <div className="d-flex mb-3">
-              <span className="fw-bold text-dark" style={{ width: '80px', fontSize: '12px', textTransform: 'uppercase' }}>RELATION :</span>
+        ) : <Col xs={4}></Col>}
+        {attendee.relation ? (
+          <Col xs={4}>
+            <div className="d-flex flex-column mb-3">
+              <span className="fw-bold text-dark" style={{ fontSize: '11px', textTransform: 'uppercase' }}>RELATION</span>
               <span className="text-muted" style={{ fontSize: '13px', wordBreak: 'break-word' }}>{attendee.relation}</span>
             </div>
           </Col>
-        )}
+        ) : <Col xs={4}></Col>}
       </Row>
 
-      {/* Row 3: Type, Payment Status */}
+      {/* Row 3: Type, Payment Status, Status */}
       <Row className="mb-3">
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '90px', fontSize: '12px', textTransform: 'uppercase' }}>TYPE :</span>
+        <Col xs={4}>
+          <div className="d-flex flex-column mb-3">
+            <span className="fw-bold text-dark" style={{ fontSize: '11px', textTransform: 'uppercase' }}>TYPE</span>
             <span className="text-muted" style={{ fontSize: '13px' }}>{attendee.ticketName || 'For Accompanying Person'}</span>
           </div>
         </Col>
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '130px', fontSize: '12px', textTransform: 'uppercase' }}>PAYMENT STATUS :</span>
+        <Col xs={4}>
+          <div className="d-flex flex-column mb-3">
+            <span className="fw-bold text-dark" style={{ fontSize: '11px', textTransform: 'uppercase' }}>PAYMENT STATUS</span>
             <span className="text-muted" style={{ fontSize: '13px' }}>{attendee.paymentStatus || 'Completed'}</span>
           </div>
         </Col>
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '80px', fontSize: '12px', textTransform: 'uppercase' }}>STATUS :</span>
+        <Col xs={4}>
+          <div className="d-flex flex-column mb-3">
+            <span className="fw-bold text-dark" style={{ fontSize: '11px', textTransform: 'uppercase' }}>STATUS</span>
             <span className="text-muted" style={{ fontSize: '13px', textTransform: 'capitalize' }}>{attendee.ticketStatus || ''}</span>
           </div>
         </Col>
