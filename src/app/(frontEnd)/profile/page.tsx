@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { Icon as IconifyIcon } from "@iconify/react";
-import { useSelector } from "react-redux";
-import { RootState } from "@/redux/store";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "@/redux/store";
+import { fetchFrontendBookings } from "@/redux/slices/frontEnd/bookingSlice";
 import toast from "react-hot-toast";
 import Header from "../common/Header";
 import Footer from "../common/Footer";
@@ -19,7 +20,10 @@ const MyAccountPage = () => {
   const { bookings } = useSelector((state: RootState) => state.frontendBooking);
   const { user } = useSelector((state: RootState) => state.frontendUser);
   const hasMembership = !!user?.memberId;
+  const dispatch = useDispatch<AppDispatch>();
+  
   useEffect(() => {
+    dispatch(fetchFrontendBookings());
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get("payment_success") === "true") {

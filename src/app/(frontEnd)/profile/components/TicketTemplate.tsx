@@ -3,14 +3,12 @@ import Image from "next/image";
 import dayjs from "dayjs";
 import logo from "@/assets/images/logo.png";
 import { setting } from "@/context/useSettingsContext";
-import { Row, Col } from "react-bootstrap";
 
 interface TicketTemplateProps {
   attendee: any;
   eventDetails: any;
   user: any;
   pdfMode?: boolean;
-  bookingId?: string;
 }
 
 export const TicketTemplate = forwardRef<HTMLDivElement, TicketTemplateProps>(({ attendee, eventDetails, user, pdfMode }, ref) => {
@@ -60,134 +58,102 @@ export const TicketTemplate = forwardRef<HTMLDivElement, TicketTemplateProps>(({
   return (
     <div 
       ref={ref} 
-      className={`ticket-print-area p-4 bg-white ${pdfMode ? '' : 'w-100'}`}
-      style={pdfMode ? { width: "800px", maxWidth: "800px", minWidth: "800px" } : {}}
+      className={`conference-pass p-4 ${pdfMode ? '' : 'w-100'}`}
     >
-      <div className="d-flex justify-content-between align-items-start mb-3">
-        <div className="d-flex align-items-center gap-4">
-          <div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src={setting("general.logo", logo.src)} 
-              alt="Event Logo" 
-              width="86"
-              height="135"
-              style={{ objectFit: 'contain' }} 
-              crossOrigin="anonymous"
-            />
-          </div>
-          <div>
-            <h5 className="fw-bold mb-1" style={{ color: "#0a266b", lineHeight: '1.4', maxWidth: '500px' }}>
-              {eventTitle}
-            </h5>
-            <div className="text-muted small mb-1">
-              Venue: {eventVenue}
-            </div>
-            <div className="text-muted small">
-              {eventDateStr}
-            </div>
-          </div>
+      <div className="event-header justify-content-center">
+        <div className="left">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={setting("general.logo", logo.src)}
+            alt="Event Logo" 
+            className="event-logo"
+            crossOrigin="anonymous"
+          />
         </div>
-
-        <div className="text-center">
-          <div className="d-inline-block border rounded p-1 bg-white mb-1 shadow-sm">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src={qrUrl} 
-              alt="QR Code" 
-              width="100" 
-              height="100" 
-              crossOrigin="anonymous"
-            />
-          </div>
-          <div className="fw-bold text-dark" style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Scan QR Code</div>
+        <div className="right">
+          <h1 className="event-title">{eventTitle}</h1>
+          <div className="event-meta">Venue: {eventVenue}</div>
+          <div className="event-meta">{eventDateStr}</div>
         </div>
       </div>
 
-      <div
-        className="border-top my-4"
-        style={{ borderColor: "#e9ecef", borderStyle: "dashed", borderWidth: "1px" }}
-      ></div>
-
-      {/* Row 1: Booked By, Membership ID, Price */}
-      <Row className="mb-0">
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '90px', fontSize: '12px', textTransform: 'uppercase' }}>BOOKED BY :</span>
-            <span className="text-muted" style={{ fontSize: '13px', wordBreak: 'break-word' }}>{user?.name || 'N/A'}</span>
-          </div>
-        </Col>
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '115px', fontSize: '12px', textTransform: 'uppercase' }}>MEMBERSHIP ID :</span>
-            <span className="text-muted" style={{ fontSize: '13px', wordBreak: 'break-word' }}>{user?.memberId || 'N/A'}</span>
-          </div>
-        </Col>
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '60px', fontSize: '12px', textTransform: 'uppercase' }}>PRICE :</span>
-            <span className="text-muted" style={{ fontSize: '13px' }}>
-              {attendee.ticketPrice == 0 || !attendee.ticketPrice ? "FREE" : `₹ ${attendee.ticketPrice}`}
-            </span>
-          </div>
-        </Col>
-      </Row>
-
-      {/* Row 2: Attendee, Age, Relation */}
-      <Row className="mb-0">
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '90px', fontSize: '12px', textTransform: 'uppercase' }}>ATTENDEE :</span>
-            <span className="text-muted" style={{ fontSize: '13px', wordBreak: 'break-word' }}>{attendee.name}</span>
-          </div>
-        </Col>
-        {attendee.age && (
-          <Col sm={4}>
-            <div className="d-flex mb-3">
-              <span className="fw-bold text-dark" style={{ width: '60px', fontSize: '12px', textTransform: 'uppercase' }}>AGE :</span>
-              <span className="text-muted" style={{ fontSize: '13px' }}>{attendee.age}</span>
+      <div className="details-section">
+        <div className="lefts">
+          <div className="left1">
+            <div className="detail-item">
+              <span className="detail-label">BOOKED BY :</span>
+              <span className="detail-value">{user?.name || 'N/A'}</span>
             </div>
-          </Col>
-        )}
-        {attendee.relation && (
-          <Col sm={4}>
-            <div className="d-flex mb-3">
-              <span className="fw-bold text-dark" style={{ width: '80px', fontSize: '12px', textTransform: 'uppercase' }}>RELATION :</span>
-              <span className="text-muted" style={{ fontSize: '13px', wordBreak: 'break-word' }}>{attendee.relation}</span>
+            <div className="detail-item">
+              <span className="detail-label">TYPE :</span>
+              <span className="detail-value">{attendee.ticketName || ''}</span>
             </div>
-          </Col>
-        )}
-      </Row>
-
-      {/* Row 3: Type, Payment Status */}
-      <Row className="mb-3">
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '90px', fontSize: '12px', textTransform: 'uppercase' }}>TYPE :</span>
-            <span className="text-muted" style={{ fontSize: '13px' }}>{attendee.ticketName || 'For Accompanying Person'}</span>
+            <div className="detail-item">
+              <span className="detail-label">PAYMENT STATUS :</span>
+              <span className="detail-value">{attendee.paymentStatus || ''}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">ATTENDEE :</span>
+              <span className="detail-value">{attendee.name}</span>
+            </div>
           </div>
-        </Col>
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '130px', fontSize: '12px', textTransform: 'uppercase' }}>PAYMENT STATUS :</span>
-            <span className="text-muted" style={{ fontSize: '13px' }}>{attendee.paymentStatus || 'Completed'}</span>
+          <div className="right1">
+            <div className="detail-item">
+              <span className="detail-label">MEMBERSHIP ID :</span>
+              <span className="detail-value">{user?.memberId || 'N/A'}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">PRICE :</span>
+              <span className="detail-value">{attendee.ticketPrice == 0 || !attendee.ticketPrice ? "FREE" : `₹ ${attendee.ticketPrice}`}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">STATUS :</span>
+              <span className="detail-value">{attendee.ticketStatus || ''}</span>
+            </div>
+            {(attendee.age || attendee.relation) ? (
+              <>
+                {attendee.age && (
+                  <div className="detail-item">
+                    <span className="detail-label">AGE :</span>
+                    <span className="detail-value">{attendee.age}</span>
+                  </div>
+                )}
+                {attendee.relation && (
+                  <div className="detail-item">
+                    <span className="detail-label">RELATION :</span>
+                    <span className="detail-value">{attendee.relation}</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="detail-item" style={{ visibility: 'hidden' }}>
+                <span className="detail-label">-</span>
+                <span className="detail-value">-</span>
+              </div>
+            )}
           </div>
-        </Col>
-        <Col sm={4}>
-          <div className="d-flex mb-3">
-            <span className="fw-bold text-dark" style={{ width: '80px', fontSize: '12px', textTransform: 'uppercase' }}>STATUS :</span>
-            <span className="text-muted" style={{ fontSize: '13px', textTransform: 'capitalize' }}>{attendee.ticketStatus || ''}</span>
+        </div>
+        <div className="rights">
+          <div className="col-md-auto">
+            <div className="qr-box">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={qrUrl} 
+                alt="QR Code" 
+                className="qr-image" 
+                crossOrigin="anonymous"
+              />
+              <div className="qr-title">SCAN QR CODE</div>
+            </div>
           </div>
-        </Col>
-      </Row>
-
-      <div className="text-center mb-4">
-        <div className="text-dark fw-bold mb-3" style={{ fontSize: '13px', whiteSpace: 'pre-wrap' }}>
-          {setting('general.ticket_description', '')}
         </div>
       </div>
 
-      <div className="text-center text-muted" style={{ fontSize: '12px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+      <div className="notice-section">
+        <p className="notice-gap" dangerouslySetInnerHTML={{ __html: setting('general.ticket_description', '') }}>
+        </p>
+      </div>
+      <div className="footer-info">
         {setting('seo.meta_description', '')}<br />
         {setting('general.website_address', '')}<br />
         Contact No. {setting('general.contact', '')} Email: {setting('general.support_email', '')} Website: {setting('general.website_url', '')}

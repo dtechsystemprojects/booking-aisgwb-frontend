@@ -486,6 +486,14 @@ const userSlice = createSlice({
           localStorage.setItem("user", JSON.stringify(userData));
           document.cookie = `user=${encodeURIComponent(JSON.stringify(userData))}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
         }
+      } else if (state.user) {
+        const updatedUser = { ...state.user, ...action.meta.arg, isFrontEnd: true };
+        state.user = updatedUser;
+        if (typeof window !== "undefined") {
+          localStorage.setItem("frontend_user", JSON.stringify(updatedUser));
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+          document.cookie = `user=${encodeURIComponent(JSON.stringify(updatedUser))}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+        }
       }
     });
     builder.addCase(updateFrontendProfile.rejected, (state, action) => {
