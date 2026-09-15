@@ -9,9 +9,10 @@ interface TicketTemplateProps {
   eventDetails: any;
   user: any;
   pdfMode?: boolean;
+  bookingId?: string;
 }
 
-export const TicketTemplate = forwardRef<HTMLDivElement, TicketTemplateProps>(({ attendee, eventDetails, user, pdfMode }, ref) => {
+export const TicketTemplate = forwardRef<HTMLDivElement, TicketTemplateProps>(({ attendee, eventDetails, user, pdfMode, bookingId }, ref) => {
   const eventTitle = eventDetails?.title || "Event Title";
   const eventVenue = eventDetails?.venueLocation || eventDetails?.venue || "Venue TBD";
   
