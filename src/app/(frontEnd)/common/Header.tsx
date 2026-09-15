@@ -45,6 +45,7 @@ export default function Header() {
   const { theme, updateSettings } = useLayoutContext();
   const { user } = useSelector((state: RootState) => state.frontendUser);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [imgError, setImgError] = useState(false);
 
   const [isAuth, setIsAuth] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -254,14 +255,16 @@ export default function Header() {
 
                 <div className="d-flex align-items-center gap-2">
                   <Dropdown>
-                    <DropdownToggle as={'button'} className="btn btn-light btn-account" style={{ padding: (user?.avatar && isAuth) ? '2px' : undefined }}>
-                      {(user?.avatar && isAuth) ? (
+                    <DropdownToggle as={'button'} className="btn btn-light btn-account" style={{ padding: (user?.avatar && isAuth && !imgError) ? '2px' : undefined }}>
+                      {(user?.avatar && isAuth && !imgError) ? (
                         <Image
                           src={user.avatar.startsWith("/") ? user.avatar : `/uploads/profile/${user.avatar}`}
                           alt="Profile"
                           width={28}
                           height={28}
                           style={{ borderRadius: "50%", objectFit: "cover" }}
+                          unoptimized
+                          onError={() => setImgError(true)}
                         />
                       ) : (
                         <Icon icon="user" className="fs-14" />

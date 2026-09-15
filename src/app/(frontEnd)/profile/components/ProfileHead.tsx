@@ -18,10 +18,15 @@ const ProfileHead = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     setIsLoaded(true);
   }, []);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [previewUrl, user?.avatar]);
 
   if (!isLoaded) return null; // Avoid hydration mismatch
 
@@ -145,7 +150,7 @@ const ProfileHead = () => {
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            {avatarUrl ? (
+            {(avatarUrl && !imgError) ? (
               <>
                 <Image
                   src={getAvatarSrc(avatarUrl)}
@@ -154,6 +159,8 @@ const ProfileHead = () => {
                   height={100}
                   className="account-avatar"
                   style={{ borderRadius: "50%", objectFit: "cover" }}
+                  unoptimized
+                  onError={() => setImgError(true)}
                 />
                 {isHovered && !isUploading && (
                   <OverlayTrigger
