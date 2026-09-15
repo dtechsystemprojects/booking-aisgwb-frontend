@@ -45,7 +45,6 @@ const Booking = () => {
 
   if (!isLoaded) return null; // Avoid hydration mismatch
 
-  const fullName = user?.name;
 
   const handleDownloadTicket = async (bookingId: string, attendeeId: string, attendeeObj: any, eventDetails: any, ticketObj: any) => {
     setIsDownloading(attendeeId);
@@ -57,7 +56,8 @@ const Booking = () => {
         ticketName: ticketObj.ticketName,
         ticketPrice: attendeeObj.ticketPrice ?? ticketObj.price ?? ticketObj.ticketPrice,
         ticketStatus: attendeeObj.ticketStatus ?? attendeeObj.status ?? ticketObj.ticketStatus ?? "Unused",
-        ticketId: attendeeObj.ticketId || ticketObj.ticketId || ticketObj.id || ticketObj._id
+        ticketId: attendeeObj.ticketId || ticketObj.ticketId || ticketObj.id || ticketObj._id,
+        paymentStatus: attendeeObj.paymentStatus || ticketObj.paymentStatus || bookings.find((b: any) => b._id === bookingId || b.id === bookingId)?.paymentStatus
       },
       eventDetails,
       bookingId
