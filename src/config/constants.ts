@@ -3,7 +3,7 @@ export const META_DATA = {
   title: "AISGWB",
   email: "isgwbc@gmail.com",
   description: "All India Society of Gastroenterology, West Bengal",
-  author: "D-Tech System",
+  author: "DTech System",
   username: "",
   keywords: "AISGWB",
   version: "1.0.0",
