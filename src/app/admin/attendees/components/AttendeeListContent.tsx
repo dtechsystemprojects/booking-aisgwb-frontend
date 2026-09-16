@@ -258,9 +258,7 @@ const AttendeeListContent: React.FC = () => {
 
     setResendingAttendee(attendee);
     setResendingEventDetails(eventDetails);
-    if (provisionalTxn) {
-      setDownloadingTxn(provisionalTxn);
-    }
+    setDownloadingTxn(provisionalTxn || null);
 
     setTimeout(async () => {
       try {
@@ -289,6 +287,14 @@ const AttendeeListContent: React.FC = () => {
 
         const invoiceEl = document.getElementById(`admin-booking-invoice-template-${attendeeId}`);
         if (invoiceEl) {
+          const imgs = Array.from(invoiceEl.querySelectorAll('img'));
+          await Promise.all(imgs.map(img => {
+            if (img.complete) return Promise.resolve();
+            return new Promise(resolve => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+          }));
           const iCanvas = await html2canvas(invoiceEl, { scale: 2, useCORS: true, allowTaint: true, windowWidth: 800, logging: true });
           const iImgData = iCanvas.toDataURL("image/png");
           const iPdf = new jsPDF("p", "mm", "a4");

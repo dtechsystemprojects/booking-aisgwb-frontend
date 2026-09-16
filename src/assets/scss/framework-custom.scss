@@ -624,7 +624,14 @@ html[data-skin="modern"]:not([data-sidenav-size="condensed"]) {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 0 !important;
+
+  img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 50%;
+  }
 
   &:after {
     display: none;
@@ -1182,7 +1189,7 @@ html[data-skin="modern"]:not([data-sidenav-size="condensed"]) {
     color: #303848;
     font-weight: 700;
     white-space: nowrap;
-    min-width: 105px;
+    min-width: 115px;
   }
 
   .detail-value {
@@ -1196,6 +1203,10 @@ html[data-skin="modern"]:not([data-sidenav-size="condensed"]) {
     padding-top: 20px;
     margin-top: 30px;
     border-top: 1px dashed #dce1e8;
+  }
+  .notice-section .notice-gap {
+    max-width: 540px;
+    margin: 0 auto;
   }
 
   .notice-section p {

@@ -9,10 +9,9 @@ interface TicketTemplateProps {
   eventDetails: any;
   user: any;
   pdfMode?: boolean;
-  bookingId?: string;
 }
 
-export const TicketTemplate = forwardRef<HTMLDivElement, TicketTemplateProps>(({ attendee, eventDetails, user, pdfMode, bookingId }, ref) => {
+export const TicketTemplate = forwardRef<HTMLDivElement, TicketTemplateProps>(({ attendee, eventDetails, user, pdfMode }, ref) => {
   const eventTitle = eventDetails?.title || "Event Title";
   const eventVenue = eventDetails?.venueLocation || eventDetails?.venue || "Venue TBD";
   
@@ -151,8 +150,7 @@ export const TicketTemplate = forwardRef<HTMLDivElement, TicketTemplateProps>(({
       </div>
 
       <div className="notice-section">
-        <p className="notice-gap" dangerouslySetInnerHTML={{ __html: setting('general.ticket_description', '') }}>
-        </p>
+        <p className="notice-gap">{setting('general.ticket_description', '')}</p>
       </div>
       <div className="footer-info">
         {setting('seo.meta_description', '')}<br />

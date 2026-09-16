@@ -78,12 +78,12 @@ const LoginForm = () => {
         toast.error("Please enter the full 6-digit OTP code.");
         return;
       }
-      
+
       setLoading(true);
       await dispatch(frontendVerifyLoginOtp({ email: identifier, otp: fullOtp })).unwrap();
-      
+
       sessionStorage.setItem("show_frontend_login_toast", "true");
-      
+
       const urlParams = new URLSearchParams(window.location.search);
       const nextUrl = urlParams.get("next");
 
@@ -114,8 +114,8 @@ const LoginForm = () => {
           <Icon icon="alert-circle" className="fs-18 flex-shrink-0" />
           <div>
             {(() => {
-              const errStr = typeof localError === 'string' 
-                ? localError 
+              const errStr = typeof localError === 'string'
+                ? localError
                 : JSON.stringify(localError);
               return errStr === 'Rejected' ? 'Authentication failed. Please check your credentials and try again.' : errStr;
             })()}
@@ -205,7 +205,7 @@ const LoginForm = () => {
             </Button>
           </div>
         ) : (
-          <div className="mb-3 p-3 bg-light rounded border">
+          <div className="mb-3 p-3 bg-light rounded border otp-box">
             <div className="d-flex justify-content-between align-items-center mb-2">
               <span className="fs-13 fw-semibold text-success d-flex align-items-center gap-1">
                 <Icon icon="check-circle" /> OTP Sent to {identifier}

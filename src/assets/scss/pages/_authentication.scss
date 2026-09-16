@@ -7,10 +7,16 @@
     @extend .position-relative;
     @extend .min-vh-100;
     padding: 50px;
-
+    @media (max-width: 1024px) {
+        min-height: auto !important;
+        padding: 60px 15px;
+    }
     .card {
         border-radius: 15px;
         overflow: hidden;
+        @media (max-width: 1024px) {
+            padding: 20px !important;
+        }
     }
 
     .card-body {
@@ -61,7 +67,16 @@
 .auth-overlay {
     background: linear-gradient(to top, #313a46, rgba(49, 58, 70, 0.8), rgba(49, 58, 70, 0.5));
 }
-
+.otp-box {
+    @media (max-width: 1024px) {
+        padding: 15px !important;
+    }
+    .two-factor {
+        @media (max-width: 1024px) {
+            gap:5px !important;
+        }
+    }
+}
 // Dark mode
 html[data-bs-theme='dark'] {
     .auth-brand {
