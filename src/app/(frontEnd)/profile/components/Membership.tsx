@@ -65,6 +65,70 @@ const Membership = () => {
       ?.name ||
     "N/A";
 
+  const renderCertificate = (id?: string) => (
+    <div
+      id={id}
+      className="border border-3 border-secondary p-4 p-md-5 rounded-3 position-relative"
+      style={{
+        borderStyle: "double",
+        width: "210mm",
+        height: "210mm",
+        background: "linear-gradient(180deg, #ffffff 0%, #fafcfd 100%)",
+      }}
+    >
+      <div className="d-flex justify-content-center mb-3">
+        <Image
+          src={setting("general.logo", logo.src)}
+          alt="AISGWB Logo"
+          style={{
+            height: "135px",
+            width: "auto",
+            objectFit: "contain",
+          }}
+          crossOrigin="anonymous"
+        />
+      </div>
+      <div className="display-6 fw-bold text-primary mb-2">AISGWB</div>
+      <div className="fw-semibold text-uppercase tracking-wide text-dark mb-4">
+        Indian Society of Gastroenterology - West Bengal Chapter
+      </div>
+
+      <h3 className="font-serif fst-italic text-secondary mb-3">
+        Certificate of Life Membership
+      </h3>
+
+      <p className="text-muted mb-2">This is to certify that</p>
+      <h2 className="fw-bold text-dark mb-2">{fullName}</h2>
+      <p className="text-muted mb-4">
+        WBMC Reg No: <strong>{memberId}</strong>
+      </p>
+
+      <p className="text-dark max-w-lg mx-auto mb-4">
+        has been duly admitted as a <strong>Verified Life Member</strong> of the
+        Indian Society of Gastroenterology (West Bengal Chapter) and is entitled
+        to all rights and privileges granted by the constitution of the society.
+      </p>
+
+      <div className="row align-items-end mt-5 pt-3">
+        <div className="col-4 text-center">
+          <div className="fw-bold text-dark border-top pt-2 small">
+            President, AISGWB
+          </div>
+        </div>
+        <div className="col-4 text-center">
+          {/* <div className="badge bg-warning bg-opacity-25 text-warning-emphasis p-2 border border-warning">
+            SEAL OF SOCIETY
+          </div> */}
+        </div>
+        <div className="col-4 text-center">
+          <div className="fw-bold text-dark border-top pt-2 small">
+            Secretary, AISGWB
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="tab-pane fade show active">
       <div className="row g-4">
@@ -180,12 +244,32 @@ const Membership = () => {
             </div>
 
             <div className="mt-4 pt-3 border-top text-end">
-              <button
-                className="btn btn-primary d-inline-flex align-items-center gap-2"
+              {/* <button
+                type="button"
+                className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1 me-2"
                 onClick={() => setShowCertificateModal(true)}
               >
-                <IconifyIcon icon="lucide:award" /> View Certificate
-              </button>
+                <IconifyIcon icon="lucide:award" width="16" /> View Certificate
+              </button> */}
+              <button
+                  type="button"
+                  className="btn btn-primary btn-sm d-inline-flex align-items-center gap-1"
+                  onClick={handleDownloadPDF}
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <span
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                  ) : (
+                    <IconifyIcon icon="lucide:download" width="16" />
+                  )}
+                  {isDownloading
+                    ? "Generating..."
+                    : "Download Certificate"}
+                </button>
             </div>
           </div>
         </div>
@@ -212,71 +296,11 @@ const Membership = () => {
                 ></button>
               </div>
 
-              <div className="modal-body p-4 p-md-5 text-center bg-white">
-                <div
-                  id="certificate-content"
-                  className="border border-3 border-secondary p-4 p-md-5 rounded-3 position-relative"
-                  style={{
-                    borderStyle: "double",
-                    background:
-                      "linear-gradient(180deg, #ffffff 0%, #fafcfd 100%)",
-                  }}
-                >
-                  <div className="d-flex justify-content-center mb-3">
-                    <Image
-                      src={setting("general.logo", logo.src)}
-                      alt="AISGWB Logo"
-                      style={{
-                        height: "135px",
-                        width: "auto",
-                        objectFit: "contain",
-                      }}
-                      crossOrigin="anonymous"
-                    />
-                  </div>
-                  <div className="display-6 fw-bold text-primary mb-2">
-                    AISGWB
-                  </div>
-                  <div className="fw-semibold text-uppercase tracking-wide text-dark mb-4">
-                    Indian Society of Gastroenterology - West Bengal Chapter
-                  </div>
-
-                  <h3 className="font-serif fst-italic text-secondary mb-3">
-                    Certificate of Life Membership
-                  </h3>
-
-                  <p className="text-muted mb-2">This is to certify that</p>
-                  <h2 className="fw-bold text-dark mb-2">{fullName}</h2>
-                  <p className="text-muted mb-4">
-                    WBMC Reg No: <strong>{memberId}</strong>
-                  </p>
-
-                  <p className="text-dark max-w-lg mx-auto mb-4">
-                    has been duly admitted as a{" "}
-                    <strong>Verified Life Member</strong> of the Indian Society
-                    of Gastroenterology (West Bengal Chapter) and is entitled to
-                    all rights and privileges granted by the constitution of the
-                    society.
-                  </p>
-
-                  <div className="row align-items-end mt-5 pt-3">
-                    <div className="col-4 text-center">
-                      <div className="fw-bold text-dark border-top pt-2 small">
-                        President, AISGWB
-                      </div>
-                    </div>
-                    <div className="col-4 text-center">
-                      {/* <div className="badge bg-warning bg-opacity-25 text-warning-emphasis p-2 border border-warning">
-                        SEAL OF SOCIETY
-                      </div> */}
-                    </div>
-                    <div className="col-4 text-center">
-                      <div className="fw-bold text-dark border-top pt-2 small">
-                        Secretary, AISGWB
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <div
+                className="modal-body p-4 p-md-5 text-center bg-white"
+                style={{ overflowX: "auto" }}
+              >
+                {renderCertificate()}
               </div>
 
               <div className="modal-footer p-3 bg-light border-top">
@@ -311,6 +335,19 @@ const Membership = () => {
           </div>
         </div>
       )}
+
+      {/* HIDDEN CERTIFICATE FOR DOWNLOAD */}
+      <div
+        style={{
+          position: "absolute",
+          top: "-9999px",
+          left: "-9999px",
+          zIndex: -1,
+        }}
+        className="text-center bg-white"
+      >
+        {renderCertificate("certificate-content")}
+      </div>
     </div>
   );
 };
