@@ -182,9 +182,9 @@ export default function Header() {
               <div className="auth-brand mb-0">
                 <Link href="/" className="logo-dark d-flex align-items-center gap-2 text-decoration-none">
                   {isMounted ? (
-                    <Image src={setting("general.logo", logo.src)} alt="dark logo" height={32} width={150} style={{ objectFit: 'contain' }} />
+                    <Image src={setting("general.logo", logo)} alt="dark logo" height={32} width={150} style={{ objectFit: 'contain' }} />
                   ) : (
-                    <Image src={logo.src} alt="dark logo" height={32} width={150} style={{ objectFit: 'contain' }} />
+                    <Image src={logo} alt="dark logo" height={32} width={150} style={{ objectFit: 'contain' }} />
                   )}
                 </Link>
               </div>

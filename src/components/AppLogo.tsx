@@ -17,12 +17,12 @@ const AppLogo = () => {
       <span className="logo logo-light">
         {sidenavSize !== "condensed" ? (
           <span className="logo-lg d-flex align-items-center justify-content-center gap-2" style={{ height: '70px' }}>
-            <Image src={setting("general.logo", logo.src)} alt="logo" height={32} width={32} style={{ objectFit: 'contain' }} />
+            <Image src={setting("general.logo", logo)} alt="logo" height={32} width={32} style={{ objectFit: 'contain' }} />
             <h5 className="mb-0 text-white fw-bold text-truncate" style={{ maxWidth: '140px', fontSize: '15px' }}>{setting("general.title", "AISGWB")}</h5>
           </span>
         ) : (
           <span className="logo-sm">
-            <Image src={setting("general.favicon", logoSm.src)} alt="small logo" height={32} width={32} />
+            <Image src={setting("general.favicon", logoSm)} alt="small logo" height={32} width={32} />
           </span>
         )}
       </span>
@@ -32,7 +32,7 @@ const AppLogo = () => {
             <Image
               src={setting(
                 "general.logo_dark",
-                setting("general.logo", logoBlack.src),
+                setting("general.logo", logoBlack),
               )}
               alt="dark logo"
               height={32}
@@ -43,7 +43,7 @@ const AppLogo = () => {
           </span>
         ) : (
           <span className="logo-sm">
-            <Image src={setting("general.favicon", logoSm.src)} alt="small logo" width={32} height={32} />
+            <Image src={setting("general.favicon", logoSm)} alt="small logo" width={32} height={32} />
           </span>
         )}
       </span>

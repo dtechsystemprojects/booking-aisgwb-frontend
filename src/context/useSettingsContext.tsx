@@ -25,11 +25,19 @@ export const getSettingValue = (
   if (!items || items.length === 0) return fallback;
   const normalizedKey = key.trim();
 
+  const isInvalid = (val: any) => 
+    typeof val === "string" && 
+    (val.startsWith("blob:") || val.startsWith("file:") || /^[A-Za-z]:[\\/]/.test(val));
+
+
   // Exact match
   const exactItem = items.find(
     (s) => s.key === normalizedKey || s.id === normalizedKey,
   );
-  if (exactItem && exactItem.value !== undefined) return exactItem.value;
+  if (exactItem && exactItem.value !== undefined) {
+    if (isInvalid(exactItem.value)) return fallback;
+    return exactItem.value;
+  }
 
   // Check wrapped vs unwrapped matching (e.g., general.title vs setting('general.title'))
   const wrappedKey = normalizedKey.startsWith("setting('")
@@ -46,7 +54,10 @@ export const getSettingValue = (
     );
   });
 
-  if (match && match.value !== undefined) return match.value;
+  if (match && match.value !== undefined) {
+    if (isInvalid(match.value)) return fallback;
+    return match.value;
+  }
   return fallback;
 };
 

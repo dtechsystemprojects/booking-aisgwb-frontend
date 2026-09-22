@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
         hostname: 'api.qrserver.com',
       },
       {
+        protocol: 'https',
+        hostname: 'api.aisgwb.org',
+      },
+      {
+        protocol: 'https',
+        hostname: 'booking.aisgwb.org',
+      },
+      {
         protocol: 'http',
         hostname: 'localhost',
       },
