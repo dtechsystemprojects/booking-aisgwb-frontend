@@ -48,15 +48,24 @@ const ProfileHead = () => {
     setPreviewUrl(objectUrl);
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("folder", "profile");
 
     try {
-      const response = await fetch("/local-api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        
+        try {
+          const response = await fetch("/local-api/upload", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              fileBase64: base64String,
+              fileName: file.name,
+              folder: "profile"
+            }),
+          });
 
       if (response.ok) {
         const resData = await response.json();
@@ -81,16 +90,30 @@ const ProfileHead = () => {
         setPreviewUrl(null); // Revert on failure
         toast.error(`Image upload failed: ${errData.message || response.statusText}`);
       }
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      setPreviewUrl(null); // Revert on failure
-      const errMsg = error?.message || (typeof error === 'string' ? error : "A network error occurred during image upload.");
-      toast.error(`Upload connection failed: ${errMsg}`);
-    } finally {
+        } catch (error: any) {
+          console.error("Upload error:", error);
+          setPreviewUrl(null); // Revert on failure
+          const errMsg = error?.message || (typeof error === 'string' ? error : "A network error occurred during image upload.");
+          toast.error(`Upload connection failed: ${errMsg}`);
+        } finally {
+          setIsUploading(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        }
+      }; // end reader.onloadend
+      
+      reader.onerror = () => {
+        setIsUploading(false);
+        setPreviewUrl(null);
+        toast.error("Failed to read the selected file.");
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (outerError) {
       setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      console.error(outerError);
+      toast.error("Failed to initialize upload.");
     }
   };
 

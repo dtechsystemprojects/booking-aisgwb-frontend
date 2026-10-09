@@ -5,18 +5,42 @@ import crypto from "crypto";
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
+    const contentType = req.headers.get("content-type") || "";
+    let buffer: Buffer;
+    let ext: string;
+    let folder: string | null = null;
+    
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      const base64Str = body.fileBase64;
+      const originalName = body.fileName || "image.png";
+      folder = body.folder || null;
+      
+      if (!base64Str) {
+        return NextResponse.json({ success: false, message: "No base64 file data provided" }, { status: 400 });
+      }
+      
+      // Extract base64 data (remove data:image/png;base64, prefix if present)
+      const base64Data = base64Str.replace(/^data:image\/\w+;base64,/, "");
+      buffer = Buffer.from(base64Data, "base64");
+      ext = path.extname(originalName).toLowerCase() || ".png";
+      
+    } else {
+      const formData = await req.formData();
+      const file = formData.get("file") as File | null;
+      folder = formData.get("folder") as string | null;
 
-    if (!file) {
-      return NextResponse.json(
-        { success: false, message: "No file provided" },
-        { status: 400 }
-      );
+      if (!file) {
+        return NextResponse.json(
+          { success: false, message: "No file provided" },
+          { status: 400 }
+        );
+      }
+
+      buffer = Buffer.from(await file.arrayBuffer());
+      ext = path.extname(file.name).toLowerCase();
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const ext = path.extname(file.name).toLowerCase();
     const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp"];
 
     if (!allowedExtensions.includes(ext)) {
@@ -26,8 +50,6 @@ export async function POST(req: Request) {
       );
     }
     const uniqueFilename = `${crypto.randomUUID()}${ext}`;
-
-    const folder = formData.get("folder") as string | null;
 
     if (folder && (folder.includes("..") || folder.startsWith("/") || folder.startsWith("\\"))) {
       return NextResponse.json(

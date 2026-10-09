@@ -70,30 +70,53 @@ const ProfileForm = () => {
     setIsUploading(true);
 
     try {
-      const formPayload = new FormData();
-      formPayload.append("file", file);
-      formPayload.append("folder", "profile");
-
-      const res = await fetch(`/local-api/upload`, {
-        method: "POST",
-        body: formPayload,
-      });
-      const data = await res.json();
-      const uploadedUrl = data?.data?.url || data?.url || "";
-      if (res.ok && uploadedUrl) {
-        handleChange("avatar", uploadedUrl);
-        setImagePreview(uploadedUrl);
-      } else {
-        setErrorMessage(`Upload failed: ${data.message || "Could not get URL."}`);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        
+        try {
+          const res = await fetch(`/local-api/upload`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              fileBase64: base64String,
+              fileName: file.name,
+              folder: "profile"
+            }),
+          });
+          const data = await res.json();
+          const uploadedUrl = data?.data?.url || data?.url || "";
+          if (res.ok && uploadedUrl) {
+            handleChange("avatar", uploadedUrl);
+            setImagePreview(uploadedUrl);
+          } else {
+            setErrorMessage(`Upload failed: ${data.message || "Could not get URL."}`);
+            setImagePreview(formData.avatar || "");
+          }
+        } catch (err: any) {
+          console.error("Upload error:", err);
+          setErrorMessage(`Upload error: ${err.message || "Network issue"}`);
+          setImagePreview(formData.avatar || "");
+        } finally {
+          setIsUploading(false);
+          if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+      };
+      
+      reader.onerror = () => {
+        setIsUploading(false);
+        setErrorMessage("Failed to read the selected file.");
         setImagePreview(formData.avatar || "");
-      }
-    } catch (err: any) {
-      console.error("Upload error:", err);
-      setErrorMessage(`Upload error: ${err.message || "Network issue"}`);
-      setImagePreview(formData.avatar || "");
-    } finally {
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (outerError) {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      console.error(outerError);
+      setErrorMessage("Failed to initialize upload.");
+      setImagePreview(formData.avatar || "");
     }
   };
 
