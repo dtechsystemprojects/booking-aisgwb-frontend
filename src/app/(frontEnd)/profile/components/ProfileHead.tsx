@@ -64,22 +64,28 @@ const ProfileHead = () => {
         
         if (uploadedUrl) {
           setPreviewUrl(uploadedUrl); // Update preview to actual path
-          // Send only required profile fields to avoid overriding valid data with empty states if any, but `user` object should be fine to merge.
-          // In Account.tsx, we pass profile state. Here we can just spread user and update avatar.
-          await dispatch(updateFrontendProfile({ ...user, avatar: uploadedUrl })).unwrap();
-          toast.success("Profile image updated successfully!");
+          
+          try {
+            await dispatch(updateFrontendProfile({ ...user, avatar: uploadedUrl })).unwrap();
+            toast.success("Profile image updated successfully!");
+          } catch (reduxError: any) {
+            console.error("Redux update error:", reduxError);
+            toast.error(`Image uploaded, but profile save failed: ${typeof reduxError === 'string' ? reduxError : reduxError.message || 'Unknown error'}`);
+          }
         } else {
           setPreviewUrl(null); // Revert on failure
           toast.error("Failed to get image URL from server.");
         }
       } else {
+        const errData = await response.json().catch(() => ({}));
         setPreviewUrl(null); // Revert on failure
-        toast.error("Image upload failed.");
+        toast.error(`Image upload failed: ${errData.message || response.statusText}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error);
       setPreviewUrl(null); // Revert on failure
-      toast.error("An error occurred during image upload.");
+      const errMsg = error?.message || (typeof error === 'string' ? error : "A network error occurred during image upload.");
+      toast.error(`Upload connection failed: ${errMsg}`);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {

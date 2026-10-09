@@ -37,18 +37,31 @@ export async function POST(req: Request) {
     }
 
     let cwd = process.cwd();
-    if (cwd.endsWith(".next/standalone") || cwd.endsWith(".next\\standalone")) {
-      cwd = path.join(cwd, "..", "..");
-    }
-    const baseUploadDir = path.join(cwd, "public", "uploads");
-    const uploadDir = folder ? path.join(baseUploadDir, folder) : baseUploadDir;
+    let isStandalone = false;
+    let rootCwd = cwd;
     
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    if (cwd.endsWith(".next/standalone") || cwd.endsWith(".next\\standalone")) {
+      isStandalone = true;
+      rootCwd = path.join(cwd, "..", "..");
     }
 
-    const filePath = path.join(uploadDir, uniqueFilename);
-    fs.writeFileSync(filePath, buffer);
+    // Write to active running directory (so it serves immediately)
+    const activeBaseUploadDir = path.join(cwd, "public", "uploads");
+    const activeUploadDir = folder ? path.join(activeBaseUploadDir, folder) : activeBaseUploadDir;
+    if (!fs.existsSync(activeUploadDir)) fs.mkdirSync(activeUploadDir, { recursive: true });
+    fs.writeFileSync(path.join(activeUploadDir, uniqueFilename), buffer);
+
+    // If standalone, also write to the root project directory so files persist across rebuilds
+    if (isStandalone) {
+      try {
+        const rootBaseUploadDir = path.join(rootCwd, "public", "uploads");
+        const rootUploadDir = folder ? path.join(rootBaseUploadDir, folder) : rootBaseUploadDir;
+        if (!fs.existsSync(rootUploadDir)) fs.mkdirSync(rootUploadDir, { recursive: true });
+        fs.writeFileSync(path.join(rootUploadDir, uniqueFilename), buffer);
+      } catch (e) {
+        console.error("Failed to write to root directory (ignoring):", e);
+      }
+    }
 
     const url = folder ? `/uploads/${folder}/${uniqueFilename}` : `/uploads/${uniqueFilename}`;
 
@@ -89,13 +102,35 @@ export async function DELETE(req: Request) {
     }
 
     let cwd = process.cwd();
-    if (cwd.endsWith(".next/standalone") || cwd.endsWith(".next\\standalone")) {
-      cwd = path.join(cwd, "..", "..");
-    }
-    const filePath = path.join(cwd, "public", "uploads", filename);
+    let isStandalone = false;
+    let rootCwd = cwd;
     
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    if (cwd.endsWith(".next/standalone") || cwd.endsWith(".next\\standalone")) {
+      isStandalone = true;
+      rootCwd = path.join(cwd, "..", "..");
+    }
+
+    const activeFilePath = path.join(cwd, "public", "uploads", filename);
+    let deleted = false;
+    
+    if (fs.existsSync(activeFilePath)) {
+      fs.unlinkSync(activeFilePath);
+      deleted = true;
+    }
+
+    if (isStandalone) {
+      try {
+        const rootFilePath = path.join(rootCwd, "public", "uploads", filename);
+        if (fs.existsSync(rootFilePath)) {
+          fs.unlinkSync(rootFilePath);
+          deleted = true;
+        }
+      } catch (e) {
+        console.error("Failed to delete from root directory:", e);
+      }
+    }
+
+    if (deleted) {
       return NextResponse.json({ success: true, message: "File deleted successfully" });
     } else {
       return NextResponse.json({ success: false, message: "File not found" }, { status: 404 });
