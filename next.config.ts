@@ -32,15 +32,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // redirects: async () => {
-  //   return [
-  //     {
-  //       source: '/',
-  //       destination: '/admin/dashboard',
-  //       permanent: false,
-  //     },
-  //   ]
-  // },
+  rewrites: async () => {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: '/api/uploads/:path*',
+      },
+    ]
+  },
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
