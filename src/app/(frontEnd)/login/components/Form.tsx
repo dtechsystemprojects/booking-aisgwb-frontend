@@ -60,8 +60,9 @@ const LoginForm = () => {
       setCountdown(60);
       toast.success(`Verification code sent to ${identifier}`);
     } catch (err: any) {
-      setLocalError(err.message || "Failed to send OTP.");
-      toast.error(err.message || "Failed to send OTP.");
+      const errorMsg = typeof err === 'string' ? err : err?.message || "Failed to send OTP.";
+      setLocalError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }

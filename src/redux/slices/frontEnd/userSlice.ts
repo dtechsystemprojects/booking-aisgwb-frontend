@@ -56,7 +56,7 @@ export const frontendLoginSendOtp = createAsyncThunk(
       const response = await fetch(`${API_BASE_URL}/login/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, email: payload.identifier }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -92,7 +92,7 @@ export const frontendVerifyLoginOtp = createAsyncThunk(
       const response = await fetch(`${API_BASE_URL}/login/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, email: payload.identifier }),
       });
       const data = await response.json();
       if (!response.ok) {
