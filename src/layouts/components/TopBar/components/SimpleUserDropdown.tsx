@@ -50,7 +50,7 @@ const UserDropdown = () => {
           <div className="d-lg-flex align-items-center gap-2 d-none">
             <div className="text-start">
               <h5 className="my-0 mb-0">{user?.name || "Administrator"}</h5>
-              <span className="text-muted fs-12">{user?.groupName || "Admin"}</span>
+              <span className="fs-12 text-white">{user?.groupName || "Admin"}</span>
             </div>
             <Icon icon="chevron-down" className="align-middle" />
           </div>

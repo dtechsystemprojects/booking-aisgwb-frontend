@@ -35,25 +35,25 @@ export const stateData: StateType[] = [
   {
     icon: "tabler:users",
     className: "bg-primary-subtle text-primary",
-    value: 839,
+    value: 0,
     title: "Total Users",
   },
   {
     icon: "tabler:shield-check",
     className: "bg-success-subtle text-success",
-    value: 652,
+    value: 0,
     title: "OTP / 2FA Secured Users",
   },
   {
     icon: "tabler:users-group",
     className: "bg-info-subtle text-info",
-    value: 8,
+    value: 0,
     title: "User Groups & Roles",
   },
   {
     icon: "tabler:key",
     className: "bg-warning-subtle text-warning",
-    value: 32,
+    value: 0,
     title: "Permission Modules",
   },
 ];

@@ -19,8 +19,8 @@ import toast from "react-hot-toast";
 const LoginForm = () => {
   const { login, loading } = useAuth();
 
-  const [identifier, setIdentifier] = useState("admin@gmail.com");
-  const [password, setPassword] = useState("12345");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -115,7 +115,7 @@ const LoginForm = () => {
           </InputGroup.Text>
           <FormControl
             type="text"
-            placeholder="admin@gmail.com"
+            placeholder="Enter Your Email"
             value={identifier}
             required
             onChange={(e: ChangeEvent<HTMLInputElement>) =>
