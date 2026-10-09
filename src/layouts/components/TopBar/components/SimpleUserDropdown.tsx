@@ -1,9 +1,8 @@
 "use client";
-import User1 from "@/assets/images/users/user-1.jpg";
 import Icon from "@/components/wrappers/Icon";
 import { META_DATA } from "@/config/constants";
 import { useAuth } from "@/hooks/useAuth";
-import Image from "next/image";
+import Link from "next/link";
 import {
   Dropdown,
   DropdownDivider,
@@ -36,17 +35,31 @@ const UserDropdown = () => {
     });
   };
 
+  const getAvatarSrc = (url: string | null | undefined) => {
+    if (!url || url === "null" || url === "undefined" || url.includes("/images/users/avatar-")) return null;
+    if (url.startsWith("http") || url.startsWith("blob:") || url.startsWith("/")) return url;
+    return `/uploads/profile/${url}`;
+  };
+
+  const avatarUrl = getAvatarSrc(user?.avatar);
+
   return (
     <div id="simple-user-dropdown" className="topbar-item nav-user">
       <Dropdown>
         <DropdownToggle className="topbar-link drop-arrow-none" type="button">
-          <Image
-            src={User1}
-            width={32}
-            height={32}
-            className="rounded-circle me-lg-2 d-flex object-fit-cover"
-            alt="user-image"
-          />
+          {avatarUrl ? (
+            <img
+              src={avatarUrl as string}
+              width={32}
+              height={32}
+              className="rounded-circle me-lg-2 d-flex object-fit-cover"
+              alt="user-image"
+            />
+          ) : (
+            <div className="rounded-circle me-lg-2 d-flex align-items-center justify-content-center bg-light text-secondary" style={{ width: 32, height: 32 }}>
+              <Icon icon="user" className="fs-18" />
+            </div>
+          )}
           <div className="d-lg-flex align-items-center gap-2 d-none">
             <div className="text-start">
               <h5 className="my-0 mb-0">{user?.name || "Administrator"}</h5>
@@ -60,7 +73,7 @@ const UserDropdown = () => {
             <h6 className="text-overflow m-0">Welcome back!</h6>
           </DropdownHeader>
 
-          <DropdownItem href="/admin/users/profile">
+          <DropdownItem as={Link} href="/admin/users/profile">
             <Icon
               icon="circle-user-round"
               className="me-1 fs-lg align-middle"
@@ -73,7 +86,7 @@ const UserDropdown = () => {
             <span className="align-middle">Notifications</span>
           </DropdownItem> */}
 
-          <DropdownItem href="/admin/settings">
+          <DropdownItem as={Link} href="/admin/settings">
             <Icon icon="settings" className="me-1 fs-lg align-middle" />
             <span className="align-middle">Settings</span>
           </DropdownItem>

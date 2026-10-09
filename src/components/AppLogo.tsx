@@ -32,7 +32,7 @@ const AppLogo = () => {
             <Image
               src={setting(
                 "general.logo_dark",
-                setting("general.logo", logoBlack),
+                setting("general.logo", logo),
               )}
               alt="dark logo"
               height={32}

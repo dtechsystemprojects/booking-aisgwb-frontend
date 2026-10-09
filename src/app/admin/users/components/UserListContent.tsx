@@ -50,6 +50,12 @@ const getBadgeVariant = (groupId: string, groups: any[]) => {
   return grp?.badgeVariant || "secondary";
 };
 
+const getAvatarSrc = (url: string | null | undefined) => {
+  if (!url || url === "null" || url === "undefined" || url.includes("/images/users/avatar-")) return null;
+  if (url.startsWith("http") || url.startsWith("blob:") || url.startsWith("/")) return url;
+  return `/uploads/profile/${url}`;
+};
+
 const UserListContent: React.FC = () => {
   const dispatch = useAppDispatch();
   const {
@@ -269,11 +275,17 @@ const UserListContent: React.FC = () => {
       cell: ({ row }) => (
         <div className="d-flex align-items-center gap-3">
           <div className="avatar-sm flex-shrink-0">
-            <img
-              src={row.original.avatar || "/images/users/avatar-1.jpg"}
-              alt=""
-              className="img-fluid rounded-circle border"
-            />
+            {getAvatarSrc(row.original.avatar) ? (
+              <img
+                src={getAvatarSrc(row.original.avatar) as string}
+                alt=""
+                className="img-fluid rounded-circle border"
+              />
+            ) : (
+              <div className="avatar-title bg-light text-secondary rounded-circle border d-flex align-items-center justify-content-center w-100 h-100">
+                <Icon icon="user" className="fs-18" />
+              </div>
+            )}
           </div>
           <div>
             <div className="fw-semibold text-dark fs-14">

@@ -56,7 +56,7 @@ const UserForm: React.FC<UserFormProps> = ({ mode, userId }) => {
       day: "2-digit",
       year: "numeric",
     }),
-    avatar: "/images/users/avatar-1.jpg",
+    avatar: "",
     sex: "",
     memberId: "",
     username: "",

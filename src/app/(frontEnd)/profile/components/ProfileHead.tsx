@@ -36,7 +36,8 @@ const ProfileHead = () => {
   const memberId = user?.memberId || "N/A";
   
   // Try common image property names from the user object, fallback to previewUrl if set
-  const avatarUrl = previewUrl || user?.avatar || null;
+  let avatarUrl = previewUrl || user?.avatar || null;
+  if (avatarUrl === "null" || avatarUrl === "undefined" || (typeof avatarUrl === 'string' && avatarUrl.includes("/images/users/avatar-"))) avatarUrl = null;
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -125,8 +126,8 @@ const ProfileHead = () => {
     }
   };
 
-  const getAvatarSrc = (url: string | null) => {
-    if (!url) return "";
+  const getAvatarSrc = (url: string | null | undefined) => {
+    if (!url || url === "null" || url === "undefined" || url.includes("/images/users/avatar-")) return "";
     if (url.startsWith("blob:") || url.startsWith("http://") || url.startsWith("https://")) {
       return url;
     }

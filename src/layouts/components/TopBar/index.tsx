@@ -47,7 +47,7 @@ const TopBar = () => {
                   <img
                     src={setting(
                       "general.logo_dark",
-                      setting("general.logo", logoBlack.src),
+                      setting("general.logo", logo.src),
                     )}
                     alt="dark logo"
                     height={32}

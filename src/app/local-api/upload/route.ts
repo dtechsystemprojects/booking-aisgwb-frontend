@@ -36,7 +36,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const baseUploadDir = path.join(process.cwd(), "public", "uploads");
+    let cwd = process.cwd();
+    if (cwd.endsWith(".next/standalone") || cwd.endsWith(".next\\standalone")) {
+      cwd = path.join(cwd, "..", "..");
+    }
+    const baseUploadDir = path.join(cwd, "public", "uploads");
     const uploadDir = folder ? path.join(baseUploadDir, folder) : baseUploadDir;
     
     if (!fs.existsSync(uploadDir)) {
@@ -84,7 +88,11 @@ export async function DELETE(req: Request) {
        return NextResponse.json({ success: false, message: "Invalid filename" }, { status: 400 });
     }
 
-    const filePath = path.join(process.cwd(), "public", "uploads", filename);
+    let cwd = process.cwd();
+    if (cwd.endsWith(".next/standalone") || cwd.endsWith(".next\\standalone")) {
+      cwd = path.join(cwd, "..", "..");
+    }
+    const filePath = path.join(cwd, "public", "uploads", filename);
     
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);

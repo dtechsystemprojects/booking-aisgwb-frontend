@@ -13,7 +13,7 @@
       <>
         <Link href="/" className="logo-dark">
           <Image 
-            src={setting("general.logo_dark", setting("general.logo", logoBlack.src))} 
+            src={setting("general.logo_dark", setting("general.logo", logo.src))} 
             alt="dark logo" 
             width={120}
             height={32} 
