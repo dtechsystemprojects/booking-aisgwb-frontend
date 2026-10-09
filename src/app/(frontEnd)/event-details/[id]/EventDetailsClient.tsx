@@ -76,80 +76,72 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
             const memberGroupId = process.env.NEXT_PUBLIC_MEMBER_GROUP_ID;
             const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
             
-            const isPrimaryPass = ticketGroupId && ticketGroupId !== accPersonGroupId;
+            const isAccPersonByName = (ticketToAdd as any).ticketName?.toLowerCase().includes('accompany') || (ticketToAdd as any).name?.toLowerCase().includes('accompany');
+            const isPrimaryPass = (ticketGroupId && ticketGroupId !== accPersonGroupId) && !isAccPersonByName;
 
             if (isPrimaryPass) {
                 const otherPrimarySelected = tickets.find(t => {
                     const gId = typeof t.groupId === 'object' && t.groupId !== null
                         ? (t.groupId as any)._id
                         : t.groupId;
-                    const isOtherPrimary = gId && gId !== accPersonGroupId;
+                    const isOtherAccPersonByName = (t as any).ticketName?.toLowerCase().includes('accompany') || (t as any).name?.toLowerCase().includes('accompany');
+                    const isOtherPrimary = (gId && gId !== accPersonGroupId) && !isOtherAccPersonByName;
                     return isOtherPrimary && (t.id !== id && t._id !== id) && (quantities[t.id ?? t._id ?? ''] || 0) > 0;
                 });
                 
                 if (otherPrimarySelected) {
                     Swal.fire({
-                        icon: 'error',
-                        title: 'Selection Error',
+                        icon: 'warning',
+                        title: 'Attention!',
                         text: 'Please select only one option Member, Non-Member, or Resident at a time for a single member.',
                     });
                     return;
                 }
                 
-                if (process.env.NEXT_PUBLIC_BOOKING_MULTIPLE_TICKET_ADD === 'false') {
-                    let hasPastPrimaryTicket = false;
-                    for (const b of bookings || []) {
-                        const bEventId = b.eventId?._id || b.eventId?.id || b.eventId;
-                        const currentEventId = event?._id || event?.id;
-                        if (bEventId === currentEventId) {
-                            for (const bt of b.tickets || []) {
-                                const bTicketId = bt.ticketId?._id || bt.ticketId?.id || bt.ticketId;
-                                const relatedTicket = tickets.find((t: any) => t._id === bTicketId || t.id === bTicketId);
-                                const tGroupId = (relatedTicket?.groupId as any)?._id || relatedTicket?.groupId;
-                                if (tGroupId && tGroupId !== accPersonGroupId) {
-                                    hasPastPrimaryTicket = true;
-                                    break;
-                                }
+                let hasPastPrimaryTicket = false;
+                for (const b of bookings || []) {
+                    const bEventId = b.eventId?._id || b.eventId?.id || b.eventId;
+                    const currentEventId = event?._id || event?.id;
+                    if (bEventId === currentEventId) {
+                        for (const bt of b.tickets || []) {
+                            const bTicketId = bt.ticketId?._id || bt.ticketId?.id || bt.ticketId;
+                            const relatedTicket = tickets.find((t: any) => t._id === bTicketId || t.id === bTicketId);
+                            const tGroupId = (relatedTicket?.groupId as any)?._id || relatedTicket?.groupId;
+                            const isRelAccPerson = (relatedTicket as any)?.ticketName?.toLowerCase().includes('accompany') || (relatedTicket as any)?.name?.toLowerCase().includes('accompany');
+                            if ((tGroupId && tGroupId !== accPersonGroupId) && !isRelAccPerson) {
+                                hasPastPrimaryTicket = true;
+                                break;
                             }
                         }
-                        if (hasPastPrimaryTicket) break;
                     }
-                    
-                    if (hasPastPrimaryTicket) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Attention!',
-                            text: 'You have already booked a Primary pass for this event. You can only buy an Accompanying Person ticket.',
-                        });
-                        return;
-                    }
+                    if (hasPastPrimaryTicket) break;
+                }
                 
-                    const currentQty = quantities[id] || 0;
-                    if (currentQty + delta > 1) {
-                        Swal.fire({
-                            icon: 'error',
-                        title: 'Limit Exceeded',
-                            text: 'You can only buy one primary pass per booking.',
-                        });
-                        return;
-                    }
+                if (hasPastPrimaryTicket) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Attention!',
+                        text: 'You have already booked a Primary pass for this event. You can only buy an Accompanying Person ticket.',
+                    });
+                    return;
+                }
+            
+                const currentQty = quantities[id] || 0;
+                if (currentQty + delta > 1) {
+                    Swal.fire({
+                        icon: 'error',
+                    title: 'Limit Exceeded',
+                        text: 'You can only buy one primary pass per booking.',
+                    });
+                    return;
                 }
                 
                 // Prefer live API data; fall back to cached user state if not yet loaded
                 const isApprovedMember = myMembership?.status === 'Approved';
-                if (isApprovedMember) {
-                    if (ticketGroupId !== memberGroupId) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Attention!',
-                            text: 'As an Approved Member, you can only purchase the Member pass.',
-                        });
-                        return;
-                    }
-                } else {
+                if (!isApprovedMember) {
                     if (ticketGroupId === memberGroupId) {
                         Swal.fire({
-                            icon: 'error',
+                            icon: 'warning',
                             title: 'Attention!',
                             text: `Only approved members can purchase the Member pass. Your membership status is: ${myMembership?.status || 'Not Found'}.`,
                         });
@@ -417,7 +409,8 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                             const bTicketId = bt.ticketId?._id || bt.ticketId?.id || bt.ticketId;
                                                             const relatedTicket = tickets.find((t: any) => t._id === bTicketId || t.id === bTicketId);
                                                             const ticketGroupId = (relatedTicket?.groupId as any)?._id || relatedTicket?.groupId;
-                                                            if (ticketGroupId && ticketGroupId !== accPersonGroupId) {
+                                                            const isRelAccPerson = (relatedTicket as any)?.ticketName?.toLowerCase().includes('accompany') || (relatedTicket as any)?.name?.toLowerCase().includes('accompany');
+                                                            if ((ticketGroupId && ticketGroupId !== accPersonGroupId) && !isRelAccPerson) {
                                                                 hasPastPrimaryTicket = true;
                                                                 break;
                                                             }
@@ -435,18 +428,20 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                 // Separate into primary passes and accompanying person passes
                                                 const primaryPasses = selectedTickets.filter(t => {
                                                     const gId = resolveGId(t);
-                                                    return gId && gId !== accPersonGroupId;
+                                                    const isAccName = (t as any).ticketName?.toLowerCase().includes('accompany') || (t as any).name?.toLowerCase().includes('accompany');
+                                                    return (gId && gId !== accPersonGroupId) && !isAccName;
                                                 });
                                                 const accPersonPasses = selectedTickets.filter(t => {
                                                     const gId = resolveGId(t);
-                                                    return gId === accPersonGroupId;
+                                                    const isAccName = (t as any).ticketName?.toLowerCase().includes('accompany') || (t as any).name?.toLowerCase().includes('accompany');
+                                                    return gId === accPersonGroupId || isAccName || !gId;
                                                 });
 
                                                 // Rule: must select at least one primary pass before accompanying person passes
                                                 if (accPersonPasses.length > 0 && primaryPasses.length === 0) {
                                                     if (!hasPastPrimaryTicket) {
                                                         Swal.fire({
-                                                            icon: 'error',
+                                                            icon: 'warning',
                                                             title: 'Attention!',
                                                             text: 'Please select at least one primary pass (Member, Resident, or Non-Member) along with an Accompanying Person pass.',
                                                         });
@@ -458,8 +453,8 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                 const uniquePrimaryGroups = new Set(primaryPasses.map(t => resolveGId(t)));
                                                 if (uniquePrimaryGroups.size > 1) {
                                                     Swal.fire({
-                                                        icon: 'error',
-                                                        title: 'Selection Error',
+                                                        icon: 'warning',
+                                                        title: 'Attention!',
                                                         text: 'Please select only one option Member, Non-Member, or Resident at a time for a single member.',
                                                     });
                                                     return;
@@ -468,21 +463,11 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                 if (primaryPasses.length > 0) {
                                                     const selectedGroupId = resolveGId(primaryPasses[0]);
 
-                                                    if (isApprovedMember) {
-                                                        // Approved Members → ONLY Member pass allowed; block Non-Member & Residents
-                                                        if (selectedGroupId !== memberGroupId) {
-                                                            Swal.fire({
-                                                                icon: 'error',
-                                                                title: 'Attention!',
-                                                                text: 'As an Approved Member, you are not eligible to purchase Non-Member or Residents passes. Please select the Member pass only.',
-                                                            });
-                                                            return;
-                                                        }
-                                                    } else {
+                                                    if (!isApprovedMember) {
                                                         // Non-approved users → ONLY Residents or Non-Member pass allowed; block Member pass
                                                         if (selectedGroupId === memberGroupId) {
                                                             Swal.fire({
-                                                                icon: 'error',
+                                                                icon: 'warning',
                                                                 title: 'Attention!',
                                                                 text: `You are not an Approved Member. Only Residents or Non-Member passes are available to you. Your membership status is: ${myMembership?.status || 'Not a Member'}.`,
                                                             });

@@ -57,6 +57,7 @@ const BookingWizard = () => {
   const [attendees, setAttendees] = useState<{ [key: string]: {
     [x: string]: any; name: string 
 }[] }>({});
+  const [attendeeErrors, setAttendeeErrors] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [downloadingTxn, setDownloadingTxn] = useState<any>(null);
@@ -198,14 +199,16 @@ const BookingWizard = () => {
         const memberGroupId = process.env.NEXT_PUBLIC_MEMBER_GROUP_ID;
         const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
         
-        const isPrimaryPass = ticketGroupId && ticketGroupId !== accPersonGroupId;
+        const isAccPersonByName = (ticketToAdd as any).ticketName?.toLowerCase().includes('accompany') || (ticketToAdd as any).name?.toLowerCase().includes('accompany');
+        const isPrimaryPass = (ticketGroupId && ticketGroupId !== accPersonGroupId) && !isAccPersonByName;
 
         if (isPrimaryPass) {
             const otherPrimarySelected = activeTickets.find(t => {
                 const gId = typeof t.groupId === 'object' && t.groupId !== null
                     ? (t.groupId as any)._id
                     : t.groupId;
-                const isOtherPrimary = gId && gId !== accPersonGroupId;
+                const isOtherAccPersonByName = (t as any).ticketName?.toLowerCase().includes('accompany') || (t as any).name?.toLowerCase().includes('accompany');
+                const isOtherPrimary = (gId && gId !== accPersonGroupId) && !isOtherAccPersonByName;
                 return isOtherPrimary && (t.id !== ticketId && t._id !== ticketId) && (ticketSelections[t.id ?? t._id ?? ''] || 0) > 0;
             });
             
@@ -218,7 +221,6 @@ const BookingWizard = () => {
                 return;
             }
             
-            if (process.env.NEXT_PUBLIC_BOOKING_MULTIPLE_TICKET_ADD === 'false') {
               let hasPastPrimaryTicket = false;
               for (const a of eventAttendees) {
                   const aUserId = a.userId?._id || a.userId?.id || a.userId || (a.bookingId && (a.bookingId.userId?._id || a.bookingId.userId));
@@ -226,7 +228,8 @@ const BookingWizard = () => {
                       const aTicketId = a.ticketId?._id || a.ticketId?.id || a.ticketId;
                       const relatedTicket = activeTickets.find((t: any) => t._id === aTicketId || t.id === aTicketId);
                       const tGroupId = (relatedTicket?.groupId as any)?._id || relatedTicket?.groupId || ((a.ticketId?.groupId as any)?._id || a.ticketId?.groupId);
-                      if (tGroupId && tGroupId !== accPersonGroupId) {
+                      const isRelAccPerson = (relatedTicket as any)?.ticketName?.toLowerCase().includes('accompany') || (relatedTicket as any)?.name?.toLowerCase().includes('accompany');
+                      if ((tGroupId && tGroupId !== accPersonGroupId) && !isRelAccPerson) {
                           hasPastPrimaryTicket = true;
                           break;
                       }
@@ -234,7 +237,7 @@ const BookingWizard = () => {
               }
               if (hasPastPrimaryTicket) {
                   Swal.fire({
-                      icon: 'error',
+                      icon: 'warning',
                       title: 'Attention!',
                       text: 'You have already booked a Primary pass for this event. You can only buy an Accompanying Person ticket.',
                   });
@@ -250,22 +253,12 @@ const BookingWizard = () => {
                 });
                 return;
             }
-          }
             const isApprovedMember = userMembership?.status === 'Approved';
             
-            if (isApprovedMember) {
-                if (ticketGroupId !== memberGroupId) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Attention!',
-                        text: 'Approved members cannot buy Non-Member or Residents tickets.',
-                    });
-                    return;
-                }
-            } else {
+            if (!isApprovedMember) {
                 if (ticketGroupId === memberGroupId) {
                     Swal.fire({
-                        icon: 'error',
+                        icon: 'warning',
                         title: 'Attention!',
                         text: `Not approved members can only buy Residents or Non-Member tickets (with Accompanying Person tickets). User's membership status is: ${userMembership?.status || 'Not Found'}.`,
                     });
@@ -312,24 +305,16 @@ const BookingWizard = () => {
             ? (t.groupId as any)._id
             : t.groupId;
             
-        if (ticketGroupId === accPersonGroupId) {
+        const isAccName = (t as any).ticketName?.toLowerCase().includes('accompany') || (t as any).name?.toLowerCase().includes('accompany');
+        if (ticketGroupId === accPersonGroupId || isAccName || !ticketGroupId) {
             accPersonCount++;
         }
         
-        const isPrimaryPass = ticketGroupId && ticketGroupId !== accPersonGroupId;
+        const isPrimaryPass = (ticketGroupId && ticketGroupId !== accPersonGroupId) && !isAccName;
         if (isPrimaryPass) {
             primaryPassCount++;
             
-            if (isApprovedMember) {
-                if (ticketGroupId !== memberGroupId) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Not Allowed',
-                        text: 'Approved members cannot buy Non-Member or Residents tickets.',
-                    });
-                    return;
-                }
-            } else {
+            if (!isApprovedMember) {
                 if (ticketGroupId === memberGroupId) {
                     Swal.fire({
                         icon: 'error',
@@ -358,7 +343,8 @@ const BookingWizard = () => {
             const aTicketId = a.ticketId?._id || a.ticketId?.id || a.ticketId;
             const relatedTicket = activeTickets.find((t: any) => t._id === aTicketId || t.id === aTicketId);
             const ticketGroupId = (relatedTicket?.groupId as any)?._id || relatedTicket?.groupId || ((a.ticketId?.groupId as any)?._id || a.ticketId?.groupId);
-            if (ticketGroupId && ticketGroupId !== accPersonGroupId) {
+            const isRelAccPerson = (relatedTicket as any)?.ticketName?.toLowerCase().includes('accompany') || (relatedTicket as any)?.name?.toLowerCase().includes('accompany');
+            if ((ticketGroupId && ticketGroupId !== accPersonGroupId) && !isRelAccPerson) {
                 hasPastPrimaryTicket = true;
                 break;
             }
@@ -368,7 +354,7 @@ const BookingWizard = () => {
     if (accPersonCount > 0 && primaryPassCount === 0) {
         if (!hasPastPrimaryTicket) {
             Swal.fire({
-                icon: 'error',
+                icon: 'warning',
                 title: 'Attention!',
                 text: 'You must select at least one Primary pass (e.g. Member Pass) to buy an Accompanying Person ticket.',
             });
@@ -439,9 +425,9 @@ const BookingWizard = () => {
       return;
     }
 
-    // Validate all attendee names, and age/relation if accompanying person
     let allValid = true;
-    const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
+    let firstErrorFieldId = "";
+    const newErrors: any = {};
     
     Object.keys(ticketSelections).forEach(ticketId => {
       if (ticketSelections[ticketId] > 0) {
@@ -449,19 +435,42 @@ const BookingWizard = () => {
         const ticketGroupId = typeof ticket?.groupId === 'object' && ticket?.groupId !== null
             ? (ticket?.groupId as any)._id
             : ticket?.groupId;
+        const isAccompanyingPerson = ticketGroupId === process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID || !ticketGroupId || ticket?.ticketName?.toLowerCase().includes('accompany');
             
-        attendees[ticketId]?.forEach(att => {
-          if (!att.name || !att.name.trim()) allValid = false;
-          if (ticketGroupId === accPersonGroupId) {
-              if (!att.age || !att.age.toString().trim()) allValid = false;
-              if (!att.relation || !att.relation.trim()) allValid = false;
+        attendees[ticketId]?.forEach((att, idx) => {
+          if (!newErrors[ticketId]) newErrors[ticketId] = {};
+          if (!newErrors[ticketId][idx]) newErrors[ticketId][idx] = {};
+          
+          if (!att.name || !att.name.trim()) {
+              allValid = false;
+              newErrors[ticketId][idx].name = "Name is required";
+              if (!firstErrorFieldId) firstErrorFieldId = `name-${ticketId}-${idx}`;
+          }
+          if (isAccompanyingPerson) {
+              if (!att.age || !att.age.toString().trim()) {
+                  allValid = false;
+                  newErrors[ticketId][idx].age = "Age is required";
+                  if (!firstErrorFieldId) firstErrorFieldId = `age-${ticketId}-${idx}`;
+              }
+              if (!att.relation || !att.relation.trim()) {
+                  allValid = false;
+                  newErrors[ticketId][idx].relation = "Relation is required";
+                  if (!firstErrorFieldId) firstErrorFieldId = `relation-${ticketId}-${idx}`;
+              }
           }
         });
       }
     });
 
+    setAttendeeErrors(newErrors);
+
     if (!allValid) {
-      Swal.fire("Error", "Please provide required details (Name, and Age/Relation for accompanying persons) for all attendees", "error");
+      if (firstErrorFieldId) {
+          setTimeout(() => {
+              const el = document.getElementById(firstErrorFieldId);
+              if (el) el.focus();
+          }, 100);
+      }
       return;
     }
 
@@ -889,7 +898,7 @@ const BookingWizard = () => {
                     const ticketGroupId = typeof ticket?.groupId === 'object' && ticket?.groupId !== null
                         ? (ticket?.groupId as any)._id
                         : ticket?.groupId;
-                    const isAccompanyingPerson = ticketGroupId === process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
+                    const isAccompanyingPerson = ticketGroupId === process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID || !ticketGroupId || ticket?.ticketName?.toLowerCase().includes('accompany');
 
                     return Array.from({ length: qty }).map((_, idx) => (
                       <div key={`${ticketId}-${idx}`} className="mb-4 p-3 border rounded">
@@ -900,10 +909,18 @@ const BookingWizard = () => {
                           <Col md={isAccompanyingPerson ? 6 : 12} className="mb-3">
                             <Form.Label className="text-danger small">* <span className="text-dark">Name</span></Form.Label>
                             <Form.Control 
+                              id={`name-${ticketId}-${idx}`}
                               placeholder="Enter Name" 
                               value={attendees[ticketId]?.[idx]?.name || ""}
-                              onChange={e => handleAttendeeChange(ticketId, idx, 'name', e.target.value)}
+                              onChange={e => {
+                                handleAttendeeChange(ticketId, idx, 'name', e.target.value);
+                                if (attendeeErrors[ticketId]?.[idx]?.name) {
+                                    setAttendeeErrors((prev: any) => ({ ...prev, [ticketId]: { ...prev[ticketId], [idx]: { ...prev[ticketId]?.[idx], name: undefined } } }));
+                                }
+                              }}
+                              isInvalid={!!attendeeErrors[ticketId]?.[idx]?.name}
                             />
+                            {attendeeErrors[ticketId]?.[idx]?.name && <div className="text-danger small mt-1">{attendeeErrors[ticketId][idx].name}</div>}
                           </Col>
                           
                           {isAccompanyingPerson && (
@@ -911,20 +928,36 @@ const BookingWizard = () => {
                                   <Col md={2} className="mb-3">
                                       <Form.Label className="text-danger small">* <span className="text-dark">Age</span></Form.Label>
                                       <Form.Control 
+                                        id={`age-${ticketId}-${idx}`}
                                         type="number"
                                         min="1"
                                         placeholder="Age" 
                                         value={attendees[ticketId]?.[idx]?.age || ""}
-                                        onChange={e => handleAttendeeChange(ticketId, idx, 'age', e.target.value)}
+                                        onChange={e => {
+                                            handleAttendeeChange(ticketId, idx, 'age', e.target.value);
+                                            if (attendeeErrors[ticketId]?.[idx]?.age) {
+                                                setAttendeeErrors((prev: any) => ({ ...prev, [ticketId]: { ...prev[ticketId], [idx]: { ...prev[ticketId]?.[idx], age: undefined } } }));
+                                            }
+                                        }}
+                                        isInvalid={!!attendeeErrors[ticketId]?.[idx]?.age}
                                       />
+                                      {attendeeErrors[ticketId]?.[idx]?.age && <div className="text-danger small mt-1">{attendeeErrors[ticketId][idx].age}</div>}
                                   </Col>
                                   <Col md={4} className="mb-3">
                                       <Form.Label className="text-danger small">* <span className="text-dark">Relation</span></Form.Label>
                                       <Form.Control 
+                                        id={`relation-${ticketId}-${idx}`}
                                         placeholder="e.g. Spouse, Child" 
                                         value={attendees[ticketId]?.[idx]?.relation || ""}
-                                        onChange={e => handleAttendeeChange(ticketId, idx, 'relation', e.target.value)}
+                                        onChange={e => {
+                                            handleAttendeeChange(ticketId, idx, 'relation', e.target.value);
+                                            if (attendeeErrors[ticketId]?.[idx]?.relation) {
+                                                setAttendeeErrors((prev: any) => ({ ...prev, [ticketId]: { ...prev[ticketId], [idx]: { ...prev[ticketId]?.[idx], relation: undefined } } }));
+                                            }
+                                        }}
+                                        isInvalid={!!attendeeErrors[ticketId]?.[idx]?.relation}
                                       />
+                                      {attendeeErrors[ticketId]?.[idx]?.relation && <div className="text-danger small mt-1">{attendeeErrors[ticketId][idx].relation}</div>}
                                   </Col>
                               </>
                           )}

@@ -49,7 +49,7 @@ const initialState: FrontendAuthState = {
 export const frontendLoginSendOtp = createAsyncThunk(
   "frontendUser/loginSendOtp",
   async (
-    payload: { email: string },
+    payload: { identifier: string },
     { rejectWithValue }
   ) => {
     try {
@@ -85,7 +85,7 @@ export const frontendLoginSendOtp = createAsyncThunk(
 export const frontendVerifyLoginOtp = createAsyncThunk(
   "frontendUser/verifyLoginOtp",
   async (
-    payload: { email: string; otp: string },
+    payload: { identifier: string; otp: string },
     { rejectWithValue }
   ) => {
     try {

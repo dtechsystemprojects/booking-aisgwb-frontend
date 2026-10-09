@@ -54,7 +54,7 @@ const LoginForm = () => {
     setLocalError(null);
     setLoading(true);
     try {
-      await dispatch(frontendLoginSendOtp({ email: identifier })).unwrap();
+      await dispatch(frontendLoginSendOtp({ identifier })).unwrap();
 
       setOtpSent(true);
       setCountdown(60);
@@ -80,7 +80,7 @@ const LoginForm = () => {
       }
 
       setLoading(true);
-      await dispatch(frontendVerifyLoginOtp({ email: identifier, otp: fullOtp })).unwrap();
+      await dispatch(frontendVerifyLoginOtp({ identifier, otp: fullOtp })).unwrap();
 
       sessionStorage.setItem("show_frontend_login_toast", "true");
 

@@ -14,6 +14,7 @@ import jsPDF from "jspdf";
 import { InvoiceTemplate } from "@/app/(frontEnd)/profile/components/InvoiceTemplate";
 import { TicketTemplate } from "@/app/(frontEnd)/profile/components/TicketTemplate";
 import dayjs from "dayjs";
+import toast from 'react-hot-toast';
 
 const CheckoutClient = () => {
     const [eventDetails, setEventDetails] = useState({
@@ -95,7 +96,7 @@ const CheckoutClient = () => {
                         data.tickets.forEach((t: any) => {
                             const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
                             const tGroupIdStr = (t.groupId as any)?._id || t.groupId || "";
-                            const isPrimary = tGroupIdStr !== accPersonGroupId && !t.name?.toLowerCase().includes('accompanying');
+                            const isPrimary = Boolean((tGroupIdStr && tGroupIdStr !== accPersonGroupId) && !t.name?.toLowerCase().includes('accompany'));
 
                             for (let i = 0; i < t.quantity; i++) {
                                 let prefillName = '';
@@ -225,7 +226,7 @@ const CheckoutClient = () => {
             const ticket = tickets.find(t => t.name === a.ticketName);
             if (ticket) {
                 const ageNum = parseInt(a.age);
-                const isUnderAge = !a.isPrimary && !isNaN(ageNum) && ageNum < underAgeLimit;
+                const isUnderAge = !a.isPrimary && !isNaN(ageNum) && ageNum <= underAgeLimit;
                 const finalPrice = isUnderAge ? 0 : ticket.price;
                 const finalName = isUnderAge ? `${ticket.name} (Under ${underAgeLimit})` : ticket.name;
                 
@@ -304,7 +305,7 @@ const CheckoutClient = () => {
                             quantity: t.quantity,
                             attendees: attendees.filter(a => {
                                 const ageNum = parseInt(a.age);
-                                const isUnderAge = !a.isPrimary && !isNaN(ageNum) && ageNum < underAgeLimit;
+                                const isUnderAge = !a.isPrimary && !isNaN(ageNum) && ageNum <= underAgeLimit;
                                 const finalName = isUnderAge ? `${a.ticketName} (Under ${underAgeLimit})` : a.ticketName;
                                 return finalName === t.name;
                             }).map(a => ({ name: a.name, age: a.age, relation: a.relation }))
@@ -315,7 +316,7 @@ const CheckoutClient = () => {
 
                     const attendeesData = attendees.map(a => {
                         const ageNum = parseInt(a.age);
-                        const isUnderAgeLimit = !a.isPrimary && !isNaN(ageNum) && ageNum < underAgeLimit;
+                        const isUnderAgeLimit = !a.isPrimary && !isNaN(ageNum) && ageNum <= underAgeLimit;
                         const ticket = tickets.find(t => t.name === a.ticketName);
                         return {
                             eventId: checkoutData?.event?.id,
@@ -417,14 +418,14 @@ const CheckoutClient = () => {
                         
                             sessionStorage.removeItem("checkoutData");
                             router.push("/profile?payment_success=true");
-                        }, 2500);
+                        }, 300);
                     } else {
-                        alert("Payment verification failed. Please contact support.");
+                        toast.error("Payment verification failed. Please contact support.");
                         setIsProcessing(false);
                     }
                 } catch (err) {
                     console.error("Verification error", err);
-                    alert("An error occurred during verification.");
+                    toast.error("An error occurred during verification.");
                     setIsProcessing(false);
                 }
             };
@@ -464,7 +465,7 @@ const CheckoutClient = () => {
                     });
                 } catch (e) {
                     console.error("Failed to generate free booking signature", e);
-                    alert("Error processing free booking.");
+                    toast.error("Error processing free booking.");
                     setIsProcessing(false);
                 }
                 return;
@@ -494,6 +495,11 @@ const CheckoutClient = () => {
                 },
                 theme: {
                     color: "#0d6efd"
+                },
+                modal: {
+                    ondismiss: function() {
+                        setIsProcessing(false);
+                    }
                 }
             };
             
@@ -505,14 +511,14 @@ const CheckoutClient = () => {
             const rzp1 = new (window as any).Razorpay(options);
             rzp1.on('payment.failed', function (response: any){
                 console.error("Payment failed", response.error);
-                alert(`Payment Failed: ${response.error.description}`);
+                toast.error(`Payment Failed: ${response.error.description}`);
                 setIsProcessing(false);
             });
             rzp1.open();
         } catch (error: any) {
             console.error(error);
             const errMsg = typeof error === 'string' ? error : error?.message || "Could not initialize payment gateway.";
-            alert(`Payment Gateway Error: ${errMsg}`);
+            toast.error(`Payment Gateway Error: ${errMsg}`);
             setIsProcessing(false);
         }
     };

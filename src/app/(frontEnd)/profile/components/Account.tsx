@@ -80,10 +80,10 @@ const Account = () => {
 
   const handleApplyLifeMembership = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!membershipForm.centralMembershipId) {
-      toast.error("Central Membership ID is required");
-      return;
-    }
+    // if (!membershipForm.centralMembershipId) {
+    //   toast.error("Central Membership ID is required");
+    //   return;
+    // }
 
     const amount = Number(setting('general.membership_amount', 5000));
     
@@ -150,6 +150,11 @@ const Account = () => {
                   const errorMsg = typeof err === 'string' ? err : (err?.message || "Payment verification failed");
                   toast.error(errorMsg);
               }
+          },
+          modal: {
+              ondismiss: function() {
+                  setIsApplying(false);
+              }
           }
       };
 
@@ -161,7 +166,6 @@ const Account = () => {
       
     } catch (error: any) {
       toast.error(error.message || "Error initializing payment");
-    } finally {
       setIsApplying(false);
     }
   };
@@ -235,7 +239,7 @@ const Account = () => {
                   />
                 </div>
 
-                <div className="col-md-6">
+                <div className="col-md-6 d-none">
                   <label className="form-label">
                     Username <span className="text-danger">*</span>
                   </label>
@@ -490,7 +494,7 @@ const Account = () => {
                 <Form.Control type="text" value={profile.sex} readOnly disabled />
               </div>
               <div className="col-md-6">
-                <Form.Label>Central Membership ID <span className="text-danger">*</span></Form.Label>
+                <Form.Label>Central Membership ID <span className="text-info">(For ISG Members)</span></Form.Label>
                 <Form.Control type="text" value={membershipForm.centralMembershipId} onChange={(e) => setMembershipForm({...membershipForm, centralMembershipId: e.target.value})} required />
               </div>
 
