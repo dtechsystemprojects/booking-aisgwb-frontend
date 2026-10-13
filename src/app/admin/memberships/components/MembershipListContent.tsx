@@ -12,11 +12,13 @@ import {
   getSortedRowModel,
   getFilteredRowModel,
   SortingState,
+  Table as TableType,
+  Row as TableRow,
   useReactTable,
 } from "@tanstack/react-table";
 import React, { useMemo, useEffect, useState } from "react";
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchMemberships, updateMembershipStatus } from '@/redux/slices/admin/membershipSlice';
+import { fetchMemberships, updateMembershipStatus, deleteMembership, bulkDeleteMemberships } from '@/redux/slices/admin/membershipSlice';
 import { RootState } from '@/redux/store';
 import {
   Alert,
@@ -45,6 +47,7 @@ const MembershipListContent = () => {
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
   
   const [showModal, setShowModal] = useState(false);
   const [selectedMembership, setSelectedMembership] = useState<any>(null);
@@ -128,10 +131,87 @@ const MembershipListContent = () => {
     setShowModal(true);
   };
 
+  const handleDelete = async (id: string, name?: string) => {
+    const result = await MySwal.fire({
+      title: 'Delete Membership?',
+      text: `Are you sure you want to delete membership${name ? ` for "${name}"` : ''}? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await dispatch(deleteMembership(id)).unwrap();
+        MySwal.fire('Deleted!', 'Membership deleted successfully.', 'success');
+        toast.success('Membership deleted successfully');
+      } catch (err: any) {
+        MySwal.fire('Delete Failed!', err || 'Failed to delete membership', 'warning');
+        toast.error(err || 'Failed to delete membership');
+      }
+    }
+  };
+
+  const handleConfirmBulkDelete = () => {
+    const selectedIds = Object.keys(selectedRowIds);
+    if (selectedIds.length === 0) return;
+
+    MySwal.fire({
+      title: "Delete Selected Memberships?",
+      text: `Are you sure you want to delete ${selectedIds.length} membership${selectedIds.length > 1 ? "s" : ""}? This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, Delete!",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await dispatch(bulkDeleteMemberships(selectedIds)).unwrap();
+          setSelectedRowIds({});
+          MySwal.fire("Deleted!", `Successfully deleted ${selectedIds.length} membership${selectedIds.length > 1 ? "s" : ""}.`, "success");
+          //toast.success(`Successfully deleted ${selectedIds.length} memberships`);
+        } catch (err: any) {
+          MySwal.fire("Delete Failed!", err || "Failed to bulk delete memberships.", "warning");
+          //toast.error(err || "Failed to bulk delete memberships");
+        }
+      }
+    });
+  };
+
   const columnHelper = createColumnHelper<any>();
 
   const columns: ColumnDef<any, any>[] = useMemo(
     () => [
+      columnHelper.display({
+        id: "selection",
+        header: ({ table }: { table: TableType<any> }) => (
+          <input
+            type="checkbox"
+            className="form-check-input form-check-input-light fs-14"
+            checked={table.getIsAllRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }: { row: TableRow<any> }) => {
+          return (
+            <input
+              type="checkbox"
+              className="form-check-input form-check-input-light fs-14"
+              checked={row.getIsSelected()}
+              disabled={!row.getCanSelect()}
+              onChange={row.getToggleSelectedHandler()}
+            />
+          );
+        },
+        enableSorting: false,
+        enableColumnFilter: false,
+      }),
       columnHelper.accessor((row) => row, {
         id: "user",
         header: "User",
@@ -233,12 +313,17 @@ const MembershipListContent = () => {
                   </Button>
                 </OverlayTrigger>
               )}
+              {/* <OverlayTrigger placement="top" overlay={<Tooltip id={`tooltip-delete-${info.row.id}`}>Delete</Tooltip>}>
+                <Button variant="light" size="sm" className="btn-icon text-danger" onClick={() => handleDelete(info.row.original._id, info.row.original.name || info.row.original.userId?.name)}>
+                  <Icon icon="trash-2" className="fs-16" />
+                </Button>
+              </OverlayTrigger> */}
             </div>
           );
         },
       }),
     ],
-    []
+    [selectedRowIds]
   );
 
   const membershipsList = useMemo(() => Array.isArray(data) ? data : (data?.data || []), [data]);
@@ -271,11 +356,14 @@ const MembershipListContent = () => {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getRowId: (row) => row._id,
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
+    onRowSelectionChange: setSelectedRowIds,
     state: {
       sorting,
       pagination,
+      rowSelection: selectedRowIds,
     },
   });
 
@@ -415,6 +503,17 @@ const MembershipListContent = () => {
               <Icon icon="search" className="app-search-icon text-muted" />
             </div>
 
+            {Object.keys(selectedRowIds).length > 0 && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleConfirmBulkDelete}
+                className="d-flex align-items-center gap-1"
+              >
+                <Icon icon="trash-2" className="fs-sm" /> Delete ({Object.keys(selectedRowIds).length})
+              </Button>
+            )}
+
             <OverlayTrigger placement="top" overlay={<Tooltip id="tooltip-export">Export to CSV</Tooltip>}>
               <Button variant="light" size="sm" onClick={exportToCSV} className="d-flex align-items-center gap-1">
                 <Icon icon="download" className="fs-sm" /> Export
@@ -431,6 +530,7 @@ const MembershipListContent = () => {
                 onClick={() => {
                   setSearchTerm("");
                   setStatusFilter("All");
+                  setSelectedRowIds({});
                   table.setPageSize(10);
                 }}
               >

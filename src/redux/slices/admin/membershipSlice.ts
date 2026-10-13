@@ -48,6 +48,50 @@ export const updateMembershipStatus = createAsyncThunk('memberships/updateStatus
   }
 });
 
+export const deleteMembership = createAsyncThunk('memberships/delete', async (id: string, { rejectWithValue }) => {
+  try {
+    const token = getToken();
+    const response = await fetch(`${API_BASE_URL}/admin/memberships/${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return rejectWithValue(errorData.message || 'Failed to delete membership');
+    }
+
+    return id;
+  } catch (err: any) {
+    return rejectWithValue(err.message);
+  }
+});
+
+export const bulkDeleteMemberships = createAsyncThunk('memberships/bulkDelete', async (ids: string[], { rejectWithValue }) => {
+  try {
+    const token = getToken();
+    const response = await fetch(`${API_BASE_URL}/admin/memberships/bulk-delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ ids }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return rejectWithValue(errorData.message || 'Failed to bulk delete memberships');
+    }
+
+    return ids;
+  } catch (err: any) {
+    return rejectWithValue(err.message);
+  }
+});
+
 const membershipSlice = createSlice({
   name: 'memberships',
   initialState: {
@@ -82,6 +126,16 @@ const membershipSlice = createSlice({
         if (index !== -1) {
           state.data[index] = updated;
         }
+      })
+      .addCase(deleteMembership.fulfilled, (state, action) => {
+        const id = action.payload;
+        state.data = state.data.filter((m: any) => m._id !== id && m.id !== id);
+        if (state.total > 0) state.total -= 1;
+      })
+      .addCase(bulkDeleteMemberships.fulfilled, (state, action) => {
+        const idSet = new Set(action.payload);
+        state.data = state.data.filter((m: any) => !idSet.has(m._id) && !idSet.has(m.id));
+        if (state.total > 0) state.total -= action.payload.length;
       });
   },
 });

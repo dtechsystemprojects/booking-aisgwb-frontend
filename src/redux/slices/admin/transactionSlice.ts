@@ -57,6 +57,45 @@ export const fetchTransactions = createAsyncThunk(
   }
 );
 
+export const deleteTransaction = createAsyncThunk(
+  'transactions/delete',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/admin/transactions/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete transaction');
+      }
+      return id;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const bulkDeleteTransactions = createAsyncThunk(
+  'transactions/bulkDelete',
+  async (ids: string[], { rejectWithValue }) => {
+    try {
+      const response = await fetch(`${API_URL}/admin/transactions/bulk-delete`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ ids }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to bulk delete transactions');
+      }
+      return ids;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 const transactionSlice = createSlice({
   name: 'transactions',
   initialState,
@@ -74,6 +113,14 @@ const transactionSlice = createSlice({
       .addCase(fetchTransactions.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      .addCase(deleteTransaction.fulfilled, (state, action: PayloadAction<string>) => {
+        const id = action.payload;
+        state.transactions = state.transactions.filter((t) => t._id !== id);
+      })
+      .addCase(bulkDeleteTransactions.fulfilled, (state, action: PayloadAction<string[]>) => {
+        const idSet = new Set(action.payload);
+        state.transactions = state.transactions.filter((t) => !idSet.has(t._id));
       });
   },
 });

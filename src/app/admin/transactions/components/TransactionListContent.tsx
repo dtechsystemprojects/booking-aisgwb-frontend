@@ -11,6 +11,7 @@ import {
   getFilteredRowModel,
   SortingState,
   Table as TableType,
+  Row as TableRow,
   useReactTable,
 } from "@tanstack/react-table";
 import React, { useMemo, useEffect, useState } from "react";
@@ -28,16 +29,20 @@ import {
   Tooltip
 } from "react-bootstrap";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { RootState } from "@/redux/store";
 import {
   fetchTransactions,
+  deleteTransaction,
+  bulkDeleteTransactions,
   Transaction
 } from "@/redux/slices/admin/transactionSlice";
 import dayjs from "dayjs";
+import Swal from "sweetalert2";
 import TransactionDetailsModal from "./TransactionDetailsModal";
 
 const TransactionListContent: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { transactions, loading, error } = useAppSelector((state) => state.transactions);
+  const { transactions, loading, error } = useAppSelector((state: RootState) => state.transactions);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -45,6 +50,7 @@ const TransactionListContent: React.FC = () => {
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+  const [selectedRowIds, setSelectedRowIds] = useState<Record<string, boolean>>({});
   
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -53,10 +59,83 @@ const TransactionListContent: React.FC = () => {
     dispatch(fetchTransactions());
   }, [dispatch]);
 
+  const handleDeleteSingle = (id: string, ref?: string) => {
+    Swal.fire({
+      title: "Delete Transaction?",
+      text: `Are you sure you want to delete transaction ${ref ? `"${ref}"` : ""}? This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, Delete",
+      cancelButtonText: "Cancel",
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await dispatch(deleteTransaction(id)).unwrap();
+          Swal.fire("Deleted!", "Transaction deleted successfully.", "success");
+        } catch (err: any) {
+          Swal.fire("Error!", err || "Failed to delete transaction.", "error");
+        }
+      }
+    });
+  };
+
+  const handleConfirmBulkDelete = () => {
+    const selectedIds = Object.keys(selectedRowIds);
+    if (selectedIds.length === 0) return;
+
+    Swal.fire({
+      title: "Delete Selected Transactions?",
+      text: `Are you sure you want to delete ${selectedIds.length} transaction${selectedIds.length > 1 ? "s" : ""}? This action cannot be undone.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, Delete!",
+      cancelButtonText: "Cancel",
+      reverseButtons: true,
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await dispatch(bulkDeleteTransactions(selectedIds)).unwrap();
+          setSelectedRowIds({});
+          Swal.fire("Deleted!", `Successfully deleted ${selectedIds.length} transactions.`, "success");
+        } catch (err: any) {
+          Swal.fire("Error!", err || "Failed to bulk delete transactions.", "error");
+        }
+      }
+    });
+  };
+
   const columnHelper = createColumnHelper<Transaction>();
 
   const columns: ColumnDef<Transaction, any>[] = useMemo(
     () => [
+      columnHelper.display({
+        id: "selection",
+        header: ({ table }: { table: TableType<Transaction> }) => (
+          <input
+            type="checkbox"
+            className="form-check-input form-check-input-light fs-14"
+            checked={table.getIsAllRowsSelected()}
+            onChange={table.getToggleAllRowsSelectedHandler()}
+          />
+        ),
+        cell: ({ row }: { row: TableRow<Transaction> }) => {
+          return (
+            <input
+              type="checkbox"
+              className="form-check-input form-check-input-light fs-14"
+              checked={row.getIsSelected()}
+              disabled={!row.getCanSelect()}
+              onChange={row.getToggleSelectedHandler()}
+            />
+          );
+        },
+        enableSorting: false,
+        enableColumnFilter: false,
+      }),
       columnHelper.accessor("transactionRef", {
         header: "Transaction Ref",
         cell: (info) => (
@@ -125,22 +204,29 @@ const TransactionListContent: React.FC = () => {
         id: "action",
         header: "Action",
         cell: (info) => (
-          <OverlayTrigger placement="top" overlay={<Tooltip id={`tooltip-${info.row.id}`}>View Details</Tooltip>}>
-            <Button variant="light" size="sm" className="btn-icon" onClick={() => {
-              setSelectedTransaction(info.row.original);
-              setShowModal(true);
-            }}>
-              <Icon icon="eye" className="fs-16" />
-            </Button>
-          </OverlayTrigger>
+          <div className="d-flex gap-2">
+            <OverlayTrigger placement="top" overlay={<Tooltip id={`tooltip-view-${info.row.id}`}>View Details</Tooltip>}>
+              <Button variant="light" size="sm" className="btn-icon" onClick={() => {
+                setSelectedTransaction(info.row.original);
+                setShowModal(true);
+              }}>
+                <Icon icon="eye" className="fs-16" />
+              </Button>
+            </OverlayTrigger>
+            {/* <OverlayTrigger placement="top" overlay={<Tooltip id={`tooltip-delete-${info.row.id}`}>Delete</Tooltip>}>
+              <Button variant="light" size="sm" className="btn-icon text-danger" onClick={() => handleDeleteSingle(info.row.original._id, info.row.original.transactionRef)}>
+                <Icon icon="trash-2" className="fs-16" />
+              </Button>
+            </OverlayTrigger> */}
+          </div>
         ),
       }),
     ],
-    []
+    [selectedRowIds]
   );
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => {
+    return transactions.filter((t: Transaction) => {
       const searchLower = searchTerm.toLowerCase();
       const matchesSearch = 
         t.transactionRef?.toLowerCase().includes(searchLower) ||
@@ -161,11 +247,14 @@ const TransactionListContent: React.FC = () => {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getRowId: (row) => row._id,
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
+    onRowSelectionChange: setSelectedRowIds,
     state: {
       sorting,
       pagination,
+      rowSelection: selectedRowIds,
     },
   });
 
@@ -174,7 +263,7 @@ const TransactionListContent: React.FC = () => {
     const headers = ["Ref", "User", "Email", "Event", "Type", "Method", "Amount", "Status", "Date"];
     const csvContent = [
       headers.join(","),
-      ...transactions.map((t) => {
+      ...transactions.map((t: Transaction) => {
         return `"${t.transactionRef || ''}","${t.userId?.name || t.userId?.firstName || ''} ${t.userId?.lastName || ''}","${t.userId?.email || ''}","${t.eventId?.title || ''}","${t.type || ''}","${t.paymentMethod || ''}",${t.amount},"${t.status || ''}","${dayjs(t.createdAt).format("YYYY-MM-DD")}"`;
       }),
     ].join("\n");
@@ -269,6 +358,12 @@ const TransactionListContent: React.FC = () => {
               />
               <Icon icon="search" className="app-search-icon text-muted" />
             </div>
+
+            {Object.keys(selectedRowIds).length > 0 && (
+              <Button variant="danger" size="sm" onClick={handleConfirmBulkDelete} className="d-flex align-items-center gap-1">
+                <Icon icon="trash-2" className="fs-sm" /> Delete ({Object.keys(selectedRowIds).length})
+              </Button>
+            )}
 
             <OverlayTrigger placement="top" overlay={<Tooltip id="tooltip-export">Export to CSV</Tooltip>}>
               <Button variant="light" size="sm" onClick={exportToCSV} className="d-flex align-items-center gap-1">
