@@ -80,11 +80,6 @@ const Account = () => {
 
   const handleApplyLifeMembership = async (e: React.FormEvent) => {
     e.preventDefault();
-    // if (!membershipForm.centralMembershipId) {
-    //   toast.error("Central Membership ID is required");
-    //   return;
-    // }
-
     const amount = Number(setting('general.membership_amount', 5000));
     
     setIsApplying(true);
@@ -131,7 +126,7 @@ const Account = () => {
                         mobile: profile.mobile || "",
                         gender: profile.sex || "",
                         sex: profile.sex || "",
-                        centralMembershipId: membershipForm.centralMembershipId || "",
+                        centralMembershipId: membershipForm.centralMembershipId?.trim() || "",
                         amount: amount || 0
                       },
                       transactionData: {
@@ -494,8 +489,8 @@ const Account = () => {
                 <Form.Control type="text" value={profile.sex} readOnly disabled />
               </div>
               <div className="col-md-6">
-                <Form.Label>Central Membership ID <span className="text-info">(For ISG Members)</span></Form.Label>
-                <Form.Control type="text" value={membershipForm.centralMembershipId} onChange={(e) => setMembershipForm({...membershipForm, centralMembershipId: e.target.value})} required />
+                <Form.Label>Membership ID <span className="text-muted">(For ISG Member)</span></Form.Label>
+                <Form.Control type="text" value={membershipForm.centralMembershipId} onChange={(e) => setMembershipForm({...membershipForm, centralMembershipId: e.target.value})} placeholder="Enter Membership ID" />
               </div>
 
               <div className="col-md-12 mt-4">
