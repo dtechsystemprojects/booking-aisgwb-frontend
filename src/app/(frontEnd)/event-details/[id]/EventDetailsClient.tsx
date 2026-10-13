@@ -73,7 +73,6 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
             const ticketGroupId = typeof ticketToAdd.groupId === 'object' && ticketToAdd.groupId !== null
                 ? (ticketToAdd.groupId as any)._id
                 : ticketToAdd.groupId;
-            const memberGroupId = process.env.NEXT_PUBLIC_MEMBER_GROUP_ID;
             const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
             
             const isAccPersonByName = (ticketToAdd as any).ticketName?.toLowerCase().includes('accompany') || (ticketToAdd as any).name?.toLowerCase().includes('accompany');
@@ -129,25 +128,13 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                 const currentQty = quantities[id] || 0;
                 if (currentQty + delta > 1) {
                     Swal.fire({
-                        icon: 'error',
+                        icon: 'warning',
                     title: 'Limit Exceeded',
                         text: 'You can only buy one primary pass per booking.',
                     });
                     return;
                 }
-                
-                // Prefer live API data; fall back to cached user state if not yet loaded
-                const isApprovedMember = myMembership?.status === 'Approved';
-                if (!isApprovedMember) {
-                    if (ticketGroupId === memberGroupId) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Attention!',
-                            text: `Only approved members can purchase the Member pass. Your membership status is: ${myMembership?.status || 'Not Found'}.`,
-                        });
-                        return;
-                    }
-                }
+
             }
         }
 
@@ -395,10 +382,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                             }}
                                             disabled={totalQuantity === 0}
                                             onClick={() => {
-                                                const memberGroupId = process.env.NEXT_PUBLIC_MEMBER_GROUP_ID;
                                                 const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
-
-                                                const isApprovedMember = myMembership?.status === 'Approved';
 
                                                 let hasPastPrimaryTicket = false;
                                                 for (const b of bookings || []) {
@@ -460,21 +444,6 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                     return;
                                                 }
 
-                                                if (primaryPasses.length > 0) {
-                                                    const selectedGroupId = resolveGId(primaryPasses[0]);
-
-                                                    if (!isApprovedMember) {
-                                                        // Non-approved users → ONLY Residents or Non-Member pass allowed; block Member pass
-                                                        if (selectedGroupId === memberGroupId) {
-                                                            Swal.fire({
-                                                                icon: 'warning',
-                                                                title: 'Attention!',
-                                                                text: `You are not an Approved Member. Only Residents or Non-Member passes are available to you. Your membership status is: ${myMembership?.status || 'Not a Member'}.`,
-                                                            });
-                                                            return;
-                                                        }
-                                                    }
-                                                }
 
                                                 // All validations passed — proceed to checkout
                                                 const checkoutData = {

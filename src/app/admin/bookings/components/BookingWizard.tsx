@@ -196,7 +196,6 @@ const BookingWizard = () => {
         const ticketGroupId = typeof ticketToAdd.groupId === 'object' && ticketToAdd.groupId !== null
             ? (ticketToAdd.groupId as any)._id
             : ticketToAdd.groupId;
-        const memberGroupId = process.env.NEXT_PUBLIC_MEMBER_GROUP_ID;
         const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
         
         const isAccPersonByName = (ticketToAdd as any).ticketName?.toLowerCase().includes('accompany') || (ticketToAdd as any).name?.toLowerCase().includes('accompany');
@@ -253,18 +252,7 @@ const BookingWizard = () => {
                 });
                 return;
             }
-            const isApprovedMember = userMembership?.status === 'Approved';
-            
-            if (!isApprovedMember) {
-                if (ticketGroupId === memberGroupId) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Attention!',
-                        text: `Not approved members can only buy Residents or Non-Member tickets (with Accompanying Person tickets). User's membership status is: ${userMembership?.status || 'Not Found'}.`,
-                    });
-                    return;
-                }
-            }
+
         }
       }
     }
@@ -296,9 +284,7 @@ const BookingWizard = () => {
     
     let primaryPassCount = 0;
     let accPersonCount = 0;
-    const memberGroupId = process.env.NEXT_PUBLIC_MEMBER_GROUP_ID;
     const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
-    const isApprovedMember = userMembership?.status === 'Approved';
 
     for (const t of selectedTicketObjects) {
         const ticketGroupId = typeof t.groupId === 'object' && t.groupId !== null
@@ -314,16 +300,7 @@ const BookingWizard = () => {
         if (isPrimaryPass) {
             primaryPassCount++;
             
-            if (!isApprovedMember) {
-                if (ticketGroupId === memberGroupId) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Access Denied',
-                        text: `Not approved members can only buy Residents or Non-Member tickets (with Accompanying Person tickets). User's membership status is: ${userMembership?.status || 'Not Found'}.`,
-                    });
-                    return;
-                }
-            }
+
         }
     }
 
