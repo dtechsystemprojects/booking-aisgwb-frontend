@@ -198,6 +198,7 @@ const BookingWizard = () => {
     // 1. If event-level registration date is over, every ticket is date over
     if (isEventRegistrationOver(ev)) {
       const endObj = parseDate(ev?.registrationClose || ev?.endDate);
+      const formatted = endObj ? endObj.format('MMM DD, YYYY') : null;
       return {
         isDateOver: true,
         isUpcoming: false,
@@ -205,7 +206,9 @@ const BookingWizard = () => {
         isCartAvailable: false,
         remaining: 0,
         startFormatted: null,
-        endFormatted: endObj ? endObj.format('MMM DD, YYYY') : null,
+        endFormatted: formatted,
+        ticketCloseFormatted: formatted,
+        bookingCloseFormatted: formatted || "",
       };
     }
 
@@ -272,6 +275,14 @@ const BookingWizard = () => {
       startFormatted = startObj.format('MMM DD, YYYY');
     }
 
+    // Ticket-specific close date
+    const ticketEndObj = parseDate(ticket.endDate) || endObj;
+    const ticketCloseFormatted = ticketEndObj ? ticketEndObj.format('MMM DD, YYYY') : endFormatted;
+
+    // Event-wide booking registration close date
+    const eventRegCloseObj = parseDate(ev?.registrationClose || ev?.endDate);
+    const bookingCloseFormatted = eventRegCloseObj ? eventRegCloseObj.format('MMM DD, YYYY') : (endFormatted || "");
+
     return {
       isDateOver,
       isUpcoming,
@@ -280,6 +291,8 @@ const BookingWizard = () => {
       remaining,
       startFormatted,
       endFormatted,
+      ticketCloseFormatted,
+      bookingCloseFormatted,
     };
   };
 
@@ -954,27 +967,27 @@ const BookingWizard = () => {
                                 </h6>
                                 {status.isUpcoming && (
                                   <div className="small mt-1 text-primary fw-semibold">
-                                    <i className="bi bi-calendar-event me-1"></i> Sale will start on {status.startFormatted}
+                                    <Icon icon="lucide:calendar" className="me-1" /> For Registration (Starts {status.startFormatted} )
                                   </div>
                                 )}
-                                {!status.isUpcoming && status.endFormatted && (
-                                  <div className="small mt-1 text-muted">
-                                    <i className="bi bi-clock me-1"></i> Sale will end on {status.endFormatted}
+                                {!status.isUpcoming && (status.ticketCloseFormatted || status.endFormatted) && (
+                                  <div className="text-muted small mt-1">
+                                    For Registration (Till {status.ticketCloseFormatted || status.endFormatted} )
                                   </div>
                                 )}
                                 {status.isSoldOut && (
                                   <div className="small mt-1 text-danger fw-bold">
-                                    Sold Out
+                                    Registration Closed
                                   </div>
                                 )}
                               </div>
                               {isDisabled && (
                                 <span className="badge bg-secondary">
-                                  {status.isSoldOut ? "Sold Out" : status.isUpcoming ? "Upcoming" : "Unavailable"}
+                                  {status.isSoldOut ? "Registration Closed" : status.isUpcoming ? "Registration Open" : "Registration Closed"}
                                 </span>
                               )}
                             </div>
-                            <hr className="mb-4" style={{ borderTop: "1px dashed #ced4da", opacity: 1 }} />
+                            <hr className="mb-4"/>
                             <Row className="align-items-center">
                               <Col md={4} className="mb-3 mb-md-0">
                                 <div className="text-muted small mb-2">Ticket Price:</div>
@@ -1010,6 +1023,11 @@ const BookingWizard = () => {
                                 <div className="fw-bold fs-15">₹{calculateSubtotal(ticketId).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                               </Col>
                             </Row>
+                            {(status.bookingCloseFormatted || regCloseFormatted) && (
+                              <div className="text-muted small mt-3 pt-2 border-top d-flex justify-content-between align-items-center" style={{ fontSize: "0.8rem" }}>
+                                <span><Icon icon="lucide:clock" className="me-1" /> Registration Would be Close After {status.bookingCloseFormatted || regCloseFormatted}</span>
+                              </div>
+                            )}
                           </CardBody>
                         </Card>
                         );

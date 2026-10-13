@@ -16,6 +16,7 @@ import { Spinner } from "react-bootstrap";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import Swal from "sweetalert2";
+import { Icon as IconifyIcon } from "@iconify/react";
 dayjs.extend(customParseFormat);
 
 
@@ -111,13 +112,16 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
         // 1. If event-level registration date is over, every ticket is date over
         if (isEventRegistrationOver()) {
             const endObj = parseDate(event?.registrationClose || event?.endDate);
+            const formatted = endObj ? endObj.format('MMM DD, YYYY') : null;
             return {
                 isDateOver: true,
                 isUpcoming: false,
                 isSoldOut: false,
                 isCartAvailable: false,
                 startFormatted: null,
-                endFormatted: endObj ? endObj.format('MMM DD, YYYY') : null,
+                endFormatted: formatted,
+                ticketCloseFormatted: formatted,
+                bookingCloseFormatted: formatted || "",
             };
         }
 
@@ -177,6 +181,14 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
             startFormatted = startObj.format('MMM DD, YYYY');
         }
 
+        // Ticket-specific close date
+        const ticketEndObj = parseDate(ticket.endDate) || endObj;
+        const ticketCloseFormatted = ticketEndObj ? ticketEndObj.format('MMM DD, YYYY') : endFormatted;
+
+        // Event-wide booking registration close date
+        const eventRegCloseObj = parseDate(event?.registrationClose || event?.endDate);
+        const bookingCloseFormatted = eventRegCloseObj ? eventRegCloseObj.format('MMM DD, YYYY') : (endFormatted || "");
+
         return {
             isDateOver,
             isUpcoming,
@@ -184,6 +196,8 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
             isCartAvailable,
             startFormatted,
             endFormatted,
+            ticketCloseFormatted,
+            bookingCloseFormatted,
         };
     };
 
@@ -380,7 +394,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                         {eventRegClosed ? (
                                             <div className="text-center py-4 px-2">
                                                 <div className="mb-3 text-danger">
-                                                    <i className="bi bi-calendar-x fs-1"></i>
+                                                    <IconifyIcon icon="lucide:calendar-x" width="48" height="48" />
                                                 </div>
                                                 <h5 className="fw-bold text-dark mb-2">Registration Closed</h5>
                                                 <p className="text-muted small mb-4">
@@ -432,24 +446,24 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                                     ({ticket.seatsRemaining} seats remaining)
                                                                 </span>
                                                                 {status.isUpcoming && (
-                                                                    <div className="text-primary small mt-1 fw-semibold" style={{ fontSize: "0.8rem" }}>
-                                                                        <i className="bi bi-calendar-event me-1"></i> Sale will start on {status.startFormatted}
+                                                                    <div className="text-primary small mt-1 fw-semibold">
+                                                                        <IconifyIcon icon="lucide:calendar" className="me-1" style={{ verticalAlign: "-0.15em" }} /> For Registration (Starts {status.startFormatted} )
                                                                     </div>
                                                                 )}
-                                                                {!status.isUpcoming && status.endFormatted && (
-                                                                    <div className="text-muted small mt-1" style={{ fontSize: "0.75rem" }}>
-                                                                        <i className="bi bi-clock me-1"></i> Sale will end on {status.endFormatted}
+                                                                {!status.isUpcoming && (status.ticketCloseFormatted || status.endFormatted) && (
+                                                                    <div className="text-muted small mt-1">
+                                                                        For Registration (Till {status.ticketCloseFormatted || status.endFormatted} )
                                                                     </div>
                                                                 )}
                                                                 {status.isSoldOut && (
-                                                                    <div className="text-danger small mt-1 fw-bold" style={{ fontSize: "0.8rem" }}>
-                                                                        Sold Out
+                                                                    <div className="text-danger small mt-1 fw-bold">
+                                                                        Registration Completed
                                                                     </div>
                                                                 )}
                                                             </div>
 
-                                                            <div className="border-dashed p-2 mt-2" style={{ borderStyle: "dashed", borderWidth: "1px", borderColor: "#dee2e6" }}>
-                                                                <div className="row text-muted small mb-1" style={{ fontSize: "0.75rem" }}>
+                                                            <div className="border-dashed p-2 mt-2">
+                                                                <div className="row text-muted small mb-1">
                                                                     <div className="col-4 text-start">Pass Price:</div>
                                                                     <div className="col-4 text-center">Quantity</div>
                                                                     <div className="col-4 text-end">Subtotal:</div>
@@ -462,10 +476,9 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
 
                                                                     <div className="col-4">
                                                                         {!isDisabled ? (
-                                                                        <div className="quantityCart" style={{ borderColor: "#ced4da" }}>
+                                                                        <div className="quantityCart" >
                                                                             <button
                                                                                 className="btn btn-link text-decoration-none text-dark p-0 px-2 fw-bold bg-white"
-                                                                                style={{ fontSize: "0.9rem", lineHeight: "1" }}
                                                                                 type="button"
                                                                                 onClick={() => updateQuantity(ticket.id, -1)}
                                                                                 disabled={qty === 0}
@@ -477,7 +490,6 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                                             </span>
                                                                             <button
                                                                                 className="btn btn-link text-decoration-none text-dark p-0 px-2 fw-bold bg-white"
-                                                                                style={{ fontSize: "0.9rem", lineHeight: "1" }}
                                                                                 type="button"
                                                                                 onClick={() => updateQuantity(ticket.id, 1)}
                                                                             >
@@ -486,7 +498,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                                         </div>
                                                                         ) : (
                                                                             <span className="badge bg-secondary">
-                                                                                {status.isSoldOut ? "Sold Out" : status.isUpcoming ? "Upcoming" : "Unavailable"}
+                                                                                {status.isSoldOut ? "Registration Closed" : status.isUpcoming ? "Registration Open" : "Registration Closed"}
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -496,6 +508,12 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                                     </div>
                                                                 </div>
                                                             </div>
+
+                                                            {(status.bookingCloseFormatted || regCloseFormatted) && (
+                                                                <div className="text-muted small mt-2 pt-1 border-top text-center">
+                                                                    <span><IconifyIcon icon="lucide:clock" className="me-1" style={{ verticalAlign: "-0.15em" }} /> Registration Would be Close After {status.bookingCloseFormatted || regCloseFormatted}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     );
                                                 })}
