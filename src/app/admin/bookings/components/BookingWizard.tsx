@@ -24,6 +24,8 @@ const Select = dynamic(() => import("react-select"), { ssr: false });
 import Swal from "sweetalert2";
 import Icon from "@/components/wrappers/Icon";
 import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+dayjs.extend(customParseFormat);
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { InvoiceTemplate } from "@/app/(frontEnd)/profile/components/InvoiceTemplate";
@@ -67,10 +69,6 @@ const BookingWizard = () => {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
   const selectedUser = useMemo(() => users.find(u => u.id === selectedUserId || (u as any)._id === selectedUserId), [users, selectedUserId]);
-
-  const activeTickets = useMemo(() => {
-    return tickets.filter((t: any) => t.isActive !== false);
-  }, [tickets]);
 
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
@@ -155,6 +153,157 @@ const BookingWizard = () => {
 
   const selectedEvent = useMemo(() => events.find(e => e._id === selectedEventId || e.id === selectedEventId), [events, selectedEventId]);
 
+  const parseDate = (d: string | null | undefined) => {
+    if (!d) return null;
+    let obj = dayjs(d, ["YYYY-MM-DD", "DD-MM-YYYY", "MM/DD/YYYY", "DD/MM/YYYY", "DD MMM YYYY"], true);
+    if (!obj.isValid()) obj = dayjs(d);
+    return obj.isValid() ? obj : null;
+  };
+
+  const isEventRegistrationOver = (ev: any) => {
+    if (!ev) return false;
+    const now = dayjs();
+    const activeRegClose = ev.registrationClose || ev.endDate;
+    const endObj = parseDate(activeRegClose);
+    if (!endObj) return false;
+
+    const activeRegOpen = ev.registrationOpen || ev.startDate;
+    const startObj = parseDate(activeRegOpen);
+
+    // If registration open / start date and current date are the same, registration is active today
+    if (startObj && startObj.isSame(now, 'day')) {
+      return false;
+    }
+
+    // If registration close is today and no end time specified, open through end of day
+    if (endObj.isSame(now, 'day') && !ev.endTime) {
+      return false;
+    }
+
+    let finalEnd = endObj.endOf('day');
+    if (ev.endTime) {
+      let timeObj = dayjs(ev.endTime, ["HH:mm", "HH:mm:ss", "hh:mm A", "h:mm A", "h:mmA", "hh:mmA"], true);
+      if (!timeObj.isValid()) timeObj = dayjs(`1970-01-01T${ev.endTime}`);
+      if (timeObj.isValid()) {
+        finalEnd = endObj.hour(timeObj.hour()).minute(timeObj.minute()).second(timeObj.second());
+      }
+    }
+
+    return finalEnd.isBefore(now);
+  };
+
+  const getTicketDateStatus = (ticket: any, ev: any) => {
+    const now = dayjs();
+
+    // 1. If event-level registration date is over, every ticket is date over
+    if (isEventRegistrationOver(ev)) {
+      const endObj = parseDate(ev?.registrationClose || ev?.endDate);
+      return {
+        isDateOver: true,
+        isUpcoming: false,
+        isSoldOut: false,
+        isCartAvailable: false,
+        remaining: 0,
+        startFormatted: null,
+        endFormatted: endObj ? endObj.format('MMM DD, YYYY') : null,
+      };
+    }
+
+    const activeStartDate = ticket.startDate || ev?.registrationOpen || ev?.startDate;
+    const startObj = parseDate(activeStartDate);
+
+    const activeEndDate = ticket.endDate || ev?.registrationClose || ev?.endDate || ev?.startDate;
+    const endObj = parseDate(activeEndDate);
+    const activeEndTime = ticket.endTime || ev?.endTime;
+
+    let isDateOver = false;
+    if (endObj) {
+      const isStartSameAsToday = startObj ? startObj.isSame(now, 'day') : false;
+      const isEndSameAsToday = endObj.isSame(now, 'day');
+
+      // If start date and current date are the same, it is NOT date over (ticket cart available)
+      if (isStartSameAsToday) {
+        isDateOver = false;
+      } else {
+        let finalEnd = endObj.endOf('day');
+        if (activeEndTime) {
+          let timeObj = dayjs(activeEndTime, ["HH:mm", "HH:mm:ss", "hh:mm A", "h:mm A", "h:mmA", "hh:mmA"], true);
+          if (!timeObj.isValid()) timeObj = dayjs(`1970-01-01T${activeEndTime}`);
+          if (timeObj.isValid()) {
+            finalEnd = endObj.hour(timeObj.hour()).minute(timeObj.minute()).second(timeObj.second());
+          }
+        }
+
+        if (isEndSameAsToday && !activeEndTime) {
+          isDateOver = false;
+        } else {
+          isDateOver = finalEnd.isBefore(now);
+        }
+      }
+    }
+
+    let isUpcoming = false;
+    if (startObj) {
+      // If start date and current date are the same, it is AVAILABLE (not upcoming)
+      if (startObj.isSame(now, 'day')) {
+        isUpcoming = false;
+      } else if (startObj.startOf('day').isAfter(now)) {
+        isUpcoming = true;
+      }
+    }
+
+    const bookedCount = eventAttendees.filter(a => {
+      const aTicketId = a.ticketId?._id || a.ticketId?.id || a.ticketId;
+      const isUnderAge = a.ticketName && typeof a.ticketName === 'string' && a.ticketName.includes('(Under');
+      return (aTicketId === ticket._id || aTicketId === ticket.id) && a.ticketStatus !== 'Cancelled' && !isUnderAge;
+    }).length;
+    const remaining = Math.max(0, (ticket.numberOfTickets || 0) - bookedCount);
+    const isSoldOut = remaining <= 0;
+
+    const isCartAvailable = !isDateOver && !isUpcoming && !isSoldOut;
+
+    let endFormatted: string | null = null;
+    if (endObj) {
+      endFormatted = endObj.format('MMM DD, YYYY');
+    }
+
+    let startFormatted: string | null = null;
+    if (startObj) {
+      startFormatted = startObj.format('MMM DD, YYYY');
+    }
+
+    return {
+      isDateOver,
+      isUpcoming,
+      isSoldOut,
+      isCartAvailable,
+      remaining,
+      startFormatted,
+      endFormatted,
+    };
+  };
+
+  const eventRegClosed = isEventRegistrationOver(selectedEvent);
+  const regCloseFormatted = parseDate(selectedEvent?.registrationClose || selectedEvent?.endDate)?.format('MMM DD, YYYY') || "";
+
+  const activeTickets = useMemo(() => {
+    if (eventRegClosed && !isEdit) return [];
+    return tickets.filter((t: any) => {
+      if (t.isActive === false) return false;
+      const tId = t._id || t.id;
+      // In edit mode, retain tickets that are already part of this booking
+      if (isEdit && tId && (ticketSelections[tId] || 0) > 0) return true;
+      if (eventRegClosed) return false;
+      const status = getTicketDateStatus(t, selectedEvent);
+      return !status.isDateOver;
+    });
+  }, [tickets, selectedEvent, eventRegClosed, eventAttendees, isEdit, ticketSelections]);
+
+  const isTicketDisabled = (ticket: any) => {
+    const status = getTicketDateStatus(ticket, selectedEvent);
+    return !status.isCartAvailable;
+  };
+
   useEffect(() => {
     if (selectedUser && !isFetching) {
       const nameParts = selectedUser.name?.split(" ") || [];
@@ -193,6 +342,33 @@ const BookingWizard = () => {
     if (delta > 0) {
       const ticketToAdd = activeTickets.find(t => t.id === ticketId || t._id === ticketId);
       if (ticketToAdd) {
+        const dateStatus = getTicketDateStatus(ticketToAdd, selectedEvent);
+        if (!dateStatus.isCartAvailable) {
+          if (dateStatus.isUpcoming) {
+            Swal.fire({
+              icon: 'info',
+              title: 'Upcoming Ticket',
+              text: `Sale for this ticket starts on ${dateStatus.startFormatted}.`,
+            });
+            return;
+          }
+          if (dateStatus.isDateOver) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Attention!',
+              text: 'The booking period for this ticket has ended.',
+            });
+            return;
+          }
+          if (dateStatus.isSoldOut) {
+            Swal.fire({
+              icon: 'error',
+              title: 'Sold Out',
+              text: 'This ticket is sold out.',
+            });
+            return;
+          }
+        }
         const ticketGroupId = typeof ticketToAdd.groupId === 'object' && ticketToAdd.groupId !== null
             ? (ticketToAdd.groupId as any)._id
             : ticketToAdd.groupId;
@@ -270,6 +446,15 @@ const BookingWizard = () => {
   const handleNextStep1 = () => {
     if (!selectedEventId || !selectedUserId) {
       Swal.fire("Error", "Please select both an event and a user first", "error");
+      return;
+    }
+
+    if (eventRegClosed && !isEdit) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Registration Closed',
+        text: `Online registration for this event closed on ${regCloseFormatted}.`,
+      });
       return;
     }
     
@@ -366,7 +551,7 @@ const BookingWizard = () => {
 
   const calculateSubtotal = (ticketId: string) => {
     const qty = ticketSelections[ticketId] || 0;
-    const ticket = tickets.find(t => t._id === ticketId);
+    const ticket = tickets.find(t => t._id === ticketId || t.id === ticketId);
     if (!ticket) return 0;
     
     const ticketGroupId = typeof ticket?.groupId === 'object' && ticket?.groupId !== null
@@ -739,42 +924,54 @@ const BookingWizard = () => {
               
               {(selectedEventId && selectedUserId) && (
                 <div className="mt-4">
-                  {activeTickets.length === 0 ? (
-                    <Alert variant="warning">No active tickets found for this event.</Alert>
+                  {eventRegClosed && !isEdit ? (
+                    <Alert variant="danger" className="d-flex align-items-center gap-3 p-4">
+                      <i className="bi bi-calendar-x fs-1 text-danger"></i>
+                      <div>
+                        <h5 className="fw-bold mb-1 text-danger">Registration Closed</h5>
+                        <p className="mb-0 text-muted">
+                          Online registration for this event closed on {regCloseFormatted}.
+                        </p>
+                      </div>
+                    </Alert>
+                  ) : activeTickets.length === 0 ? (
+                    <Alert variant="warning">No tickets available for this event.</Alert>
                   ) : (
                     <div className="ticket-list">
                       {activeTickets.map(ticket => {
-                        const bookedCount = eventAttendees.filter(a => {
-                          const aTicketId = a.ticketId?._id || a.ticketId?.id || a.ticketId;
-                          const isUnderAge = a.ticketName && typeof a.ticketName === 'string' && a.ticketName.includes('(Under');
-                          return (aTicketId === ticket._id || aTicketId === ticket.id) && a.ticketStatus !== 'Cancelled' && !isUnderAge;
-                        }).length;
-                        const remaining = Math.max(0, (ticket.numberOfTickets || 0) - bookedCount);
-                        
-                        const isExpired = ticket.endDate ? dayjs(ticket.endDate).endOf('day').isBefore(dayjs()) : false;
-                        const isSoldOut = remaining <= 0;
-                        const isDisabled = isExpired || isSoldOut;
-                        
-                        let statusMessage = "";
-                        if (isExpired) statusMessage = "Sales Closed";
-                        else if (isSoldOut) statusMessage = "Sold Out";
+                        const status = getTicketDateStatus(ticket, selectedEvent);
+                        const isDisabled = !status.isCartAvailable;
+                        const ticketId = (ticket._id || ticket.id) as string;
+                        const qty = ticketSelections[ticketId] || 0;
 
                         return (
-                        <Card key={ticket._id} className={`mb-4 border-0 shadow-sm ${isDisabled ? 'bg-light opacity-50' : 'bg-light'}`}>
+                        <Card key={ticketId} className={`mb-4 border-0 shadow-sm ${isDisabled ? 'bg-light opacity-75' : 'bg-light'}`}>
                           <CardBody className="p-4">
                             <div className="d-flex justify-content-between align-items-start mb-3">
                               <div>
                                 <h6 className="fw-bold m-0 fs-16 text-dark">
-                                  {ticket.ticketName} <span className="text-muted fw-normal fs-14">({remaining} seats remaining)</span>
+                                  {ticket.ticketName} <span className="text-muted fw-normal fs-14">({status.remaining} seats remaining)</span>
                                 </h6>
-                                {ticket.endDate && (
-                                  <div className={`small mt-1 ${isExpired ? 'text-danger fw-bold' : 'text-muted'}`}>
-                                    {isExpired ? 'Sale Ended on' : 'Sale will end on'} {dayjs(ticket.endDate).format('MMM D, YYYY')}
+                                {status.isUpcoming && (
+                                  <div className="small mt-1 text-primary fw-semibold">
+                                    <i className="bi bi-calendar-event me-1"></i> Sale will start on {status.startFormatted}
+                                  </div>
+                                )}
+                                {!status.isUpcoming && status.endFormatted && (
+                                  <div className="small mt-1 text-muted">
+                                    <i className="bi bi-clock me-1"></i> Sale will end on {status.endFormatted}
+                                  </div>
+                                )}
+                                {status.isSoldOut && (
+                                  <div className="small mt-1 text-danger fw-bold">
+                                    Sold Out
                                   </div>
                                 )}
                               </div>
-                              {statusMessage && (
-                                <span className="badge bg-danger">{statusMessage}</span>
+                              {isDisabled && (
+                                <span className="badge bg-secondary">
+                                  {status.isSoldOut ? "Sold Out" : status.isUpcoming ? "Upcoming" : "Unavailable"}
+                                </span>
                               )}
                             </div>
                             <hr className="mb-4" style={{ borderTop: "1px dashed #ced4da", opacity: 1 }} />
@@ -790,27 +987,27 @@ const BookingWizard = () => {
                                     <Button 
                                       variant="outline-secondary" 
                                       className="bg-white"
-                                      onClick={() => handleTicketQuantityChange(ticket._id as string, -1, ticket.maxQuantity || 10)}
-                                      disabled={isDisabled || (ticketSelections[ticket._id as string] || 0) <= 0}
+                                      onClick={() => handleTicketQuantityChange(ticketId, -1, ticket.maxQuantity || 10)}
+                                      disabled={qty <= 0}
                                     >-</Button>
                                     <Form.Control 
                                       className="text-center bg-white" 
                                       readOnly 
-                                      value={ticketSelections[ticket._id as string] || 0} 
-                                      disabled={isDisabled}
+                                      value={qty} 
+                                      disabled={isDisabled && qty === 0}
                                     />
                                     <Button 
                                       variant="outline-secondary" 
                                       className="bg-white"
-                                      onClick={() => handleTicketQuantityChange(ticket._id as string, 1, Math.min(ticket.maxQuantity || 10, remaining))}
-                                      disabled={isDisabled || (ticketSelections[ticket._id as string] || 0) >= Math.min(ticket.maxQuantity || 10, remaining)}
+                                      onClick={() => handleTicketQuantityChange(ticketId, 1, Math.min(ticket.maxQuantity || 10, status.remaining))}
+                                      disabled={isDisabled || qty >= Math.min(ticket.maxQuantity || 10, status.remaining)}
                                     >+</Button>
                                   </InputGroup>
                                 </div>
                               </Col>
                               <Col md={4} className="text-md-end text-center mt-3 mt-md-0">
                                 <div className="text-muted small mb-2">Subtotal:</div>
-                                <div className="fw-bold fs-15">₹{calculateSubtotal(ticket._id as string).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                                <div className="fw-bold fs-15">₹{calculateSubtotal(ticketId).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                               </Col>
                             </Row>
                           </CardBody>
@@ -820,7 +1017,7 @@ const BookingWizard = () => {
                     </div>
                   )}
 
-                  {activeTickets.length > 0 && (
+                  {activeTickets.length > 0 && !eventRegClosed && (
                     <div className="d-flex justify-content-between align-items-center mt-4 border-top pt-3">
                       <h5 className="fw-bold text-dark m-0">
                         Total Quantity: {Object.values(ticketSelections).reduce((a, b) => a + b, 0)}
@@ -835,7 +1032,7 @@ const BookingWizard = () => {
 
               <div className="d-flex justify-content-end gap-2 border-top pt-4 mt-4">
                 <Button variant="light" onClick={() => router.push("/admin/bookings")}>Back</Button>
-                <Button variant="primary" onClick={handleNextStep1} disabled={!selectedEventId}>Save & Next</Button>
+                <Button variant="primary" onClick={handleNextStep1} disabled={!selectedEventId || !selectedUserId || (eventRegClosed && !isEdit)}>Save & Next</Button>
               </div>
             </div>
           )}

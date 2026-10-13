@@ -66,10 +66,164 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
         }
     }, [dispatch, user?._id, user?.id]);
 
+    const parseDate = (d: string | null | undefined) => {
+        if (!d) return null;
+        let obj = dayjs(d, ["YYYY-MM-DD", "DD-MM-YYYY", "MM/DD/YYYY", "DD/MM/YYYY", "DD MMM YYYY"], true);
+        if (!obj.isValid()) obj = dayjs(d);
+        return obj.isValid() ? obj : null;
+    };
+
+    const isEventRegistrationOver = () => {
+        if (!event) return false;
+        const now = dayjs();
+        const activeRegClose = event.registrationClose || event.endDate;
+        const endObj = parseDate(activeRegClose);
+        if (!endObj) return false;
+
+        const activeRegOpen = event.registrationOpen || event.startDate;
+        const startObj = parseDate(activeRegOpen);
+
+        // If registration open / start date and current date are the same, registration is active today
+        if (startObj && startObj.isSame(now, 'day')) {
+            return false;
+        }
+
+        // If registration close is today and no end time specified, open through end of day
+        if (endObj.isSame(now, 'day') && !event.endTime) {
+            return false;
+        }
+
+        let finalEnd = endObj.endOf('day');
+        if (event.endTime) {
+            let timeObj = dayjs(event.endTime, ["HH:mm", "HH:mm:ss", "hh:mm A", "h:mm A", "h:mmA", "hh:mmA"], true);
+            if (!timeObj.isValid()) timeObj = dayjs(`1970-01-01T${event.endTime}`);
+            if (timeObj.isValid()) {
+                finalEnd = endObj.hour(timeObj.hour()).minute(timeObj.minute()).second(timeObj.second());
+            }
+        }
+
+        return finalEnd.isBefore(now);
+    };
+
+    const getTicketDateStatus = (ticket: any) => {
+        const now = dayjs();
+
+        // 1. If event-level registration date is over, every ticket is date over
+        if (isEventRegistrationOver()) {
+            const endObj = parseDate(event?.registrationClose || event?.endDate);
+            return {
+                isDateOver: true,
+                isUpcoming: false,
+                isSoldOut: false,
+                isCartAvailable: false,
+                startFormatted: null,
+                endFormatted: endObj ? endObj.format('MMM DD, YYYY') : null,
+            };
+        }
+
+        const activeStartDate = ticket.startDate || event?.registrationOpen || event?.startDate;
+        const startObj = parseDate(activeStartDate);
+
+        const activeEndDate = ticket.endDate || event?.registrationClose || event?.endDate || event?.startDate;
+        const endObj = parseDate(activeEndDate);
+        const activeEndTime = ticket.endTime || event?.endTime;
+
+        let isDateOver = false;
+        if (endObj) {
+            const isStartSameAsToday = startObj ? startObj.isSame(now, 'day') : false;
+            const isEndSameAsToday = endObj.isSame(now, 'day');
+
+            // If start date and current date are the same, it is NOT date over (ticket cart available)
+            if (isStartSameAsToday) {
+                isDateOver = false;
+            } else {
+                let finalEnd = endObj.endOf('day');
+                if (activeEndTime) {
+                    let timeObj = dayjs(activeEndTime, ["HH:mm", "HH:mm:ss", "hh:mm A", "h:mm A", "h:mmA", "hh:mmA"], true);
+                    if (!timeObj.isValid()) timeObj = dayjs(`1970-01-01T${activeEndTime}`);
+                    if (timeObj.isValid()) {
+                        finalEnd = endObj.hour(timeObj.hour()).minute(timeObj.minute()).second(timeObj.second());
+                    }
+                }
+
+                if (isEndSameAsToday && !activeEndTime) {
+                    isDateOver = false;
+                } else {
+                    isDateOver = finalEnd.isBefore(now);
+                }
+            }
+        }
+
+        let isUpcoming = false;
+        if (startObj) {
+            // If start date and current date are the same, it is AVAILABLE (not upcoming)
+            if (startObj.isSame(now, 'day')) {
+                isUpcoming = false;
+            } else if (startObj.startOf('day').isAfter(now)) {
+                isUpcoming = true;
+            }
+        }
+
+        const isSoldOut = (ticket.seatsRemaining ?? 1) <= 0;
+        const isCartAvailable = !isDateOver && !isUpcoming && !isSoldOut;
+
+        let endFormatted: string | null = null;
+        if (endObj) {
+            endFormatted = endObj.format('MMM DD, YYYY');
+        }
+
+        let startFormatted: string | null = null;
+        if (startObj) {
+            startFormatted = startObj.format('MMM DD, YYYY');
+        }
+
+        return {
+            isDateOver,
+            isUpcoming,
+            isSoldOut,
+            isCartAvailable,
+            startFormatted,
+            endFormatted,
+        };
+    };
+
+    const isTicketDisabled = (ticket: any) => {
+        const status = getTicketDateStatus(ticket);
+        return !status.isCartAvailable;
+    };
+
     const updateQuantity = (id: string, delta: number) => {
         const ticketToAdd = tickets.find(t => t.id === id || t._id === id);
         
         if (delta > 0 && ticketToAdd) {
+            const dateStatus = getTicketDateStatus(ticketToAdd);
+            if (!dateStatus.isCartAvailable) {
+                if (dateStatus.isUpcoming) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Upcoming Ticket',
+                        text: `Sale for this ticket starts on ${dateStatus.startFormatted}.`,
+                    });
+                    return;
+                }
+                if (dateStatus.isDateOver) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Attention!',
+                        text: 'The booking period for this ticket has ended.',
+                    });
+                    return;
+                }
+                if (dateStatus.isSoldOut) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Sold Out',
+                        text: 'This ticket is sold out.',
+                    });
+                    return;
+                }
+            }
+
             const ticketGroupId = typeof ticketToAdd.groupId === 'object' && ticketToAdd.groupId !== null
                 ? (ticketToAdd.groupId as any)._id
                 : ticketToAdd.groupId;
@@ -145,35 +299,10 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
         });
     };
 
-    const isTicketDisabled = (ticket: any) => {
-        if (ticket.seatsRemaining <= 0) return true;
-        
-        const activeEndDate = ticket.endDate || event?.registrationClose || event?.endDate || event?.startDate;
-        const activeEndTime = ticket.endTime || event?.endTime || '23:59:59';
-        
-        if (activeEndDate) {
-            let dateObj = dayjs(activeEndDate, ["YYYY-MM-DD", "DD-MM-YYYY", "MM/DD/YYYY", "DD/MM/YYYY", "DD MMM YYYY"], true);
-            if (!dateObj.isValid()) dateObj = dayjs(activeEndDate);
-
-            if (dateObj.isValid()) {
-                let finalDate = dateObj.endOf('day');
-                if (activeEndTime) {
-                    let timeObj = dayjs(activeEndTime, ["HH:mm", "HH:mm:ss", "hh:mm A", "h:mm A", "h:mmA", "hh:mmA"], true);
-                    if (!timeObj.isValid()) timeObj = dayjs(`1970-01-01T${activeEndTime}`); // fallback
-                    if (timeObj.isValid()) {
-                        finalDate = dateObj.hour(timeObj.hour()).minute(timeObj.minute()).second(timeObj.second());
-                    }
-                }
-                
-                if (finalDate.isBefore(dayjs())) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    };
-
-    const validTickets = tickets.filter(t => !isTicketDisabled(t));
+    const eventRegClosed = isEventRegistrationOver();
+    const regCloseFormatted = parseDate(event?.registrationClose || event?.endDate)?.format('MMM DD, YYYY') || "";
+    const visibleTickets = eventRegClosed ? [] : tickets.filter(t => !getTicketDateStatus(t).isDateOver);
+    const validTickets = visibleTickets.filter(t => !isTicketDisabled(t));
     const totalQuantity = validTickets.reduce((acc, t) => acc + (quantities[t.id] || 0), 0);
     const totalPrice = validTickets.reduce((acc, t) => {
         return acc + (quantities[t.id] || 0) * t.price;
@@ -246,50 +375,52 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
 
                                 <Card className="border-0 shadow-sm rounded-3 bg-white">
                                     <Card.Body className="p-3">
-                                        {isAuthenticated && (
+                                        <h4 className="fw-bold text-dark mb-3 fs-4">Annual Conference Pass</h4>
+
+                                        {eventRegClosed ? (
+                                            <div className="text-center py-4 px-2">
+                                                <div className="mb-3 text-danger">
+                                                    <i className="bi bi-calendar-x fs-1"></i>
+                                                </div>
+                                                <h5 className="fw-bold text-dark mb-2">Registration Closed</h5>
+                                                <p className="text-muted small mb-4">
+                                                    Online registration for this event closed on {regCloseFormatted}.
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    className="btn w-100 py-2 fw-bold text-uppercase"
+                                                    style={{
+                                                        backgroundColor: "#d0d5dd",
+                                                        borderColor: "#d0d5dd",
+                                                        color: "#667085",
+                                                        cursor: "not-allowed",
+                                                        borderRadius: "6px"
+                                                    }}
+                                                    disabled
+                                                >
+                                                    Registration Closed
+                                                </button>
+                                            </div>
+                                        ) : (
                                             <>
-                                                <h4 className="fw-bold text-dark mb-2 fs-4">Annual Conference Pass</h4>
-                                                {ticketsLoading && (
-                                                    <div className="text-center py-3">
-                                                        <Spinner animation="border" size="sm" variant="primary" />
-                                                        <span className="ms-2">Loading tickets...</span>
-                                                    </div>
-                                                )}
-                                                {!ticketsLoading && tickets.length === 0 && (
-                                                    <div className="text-center py-3 text-muted">
-                                                        No tickets available.
-                                                    </div>
-                                                )}
-                                                {!ticketsLoading && tickets.map((ticket) => {
+                                                {isAuthenticated && (
+                                                    <>
+                                                        {ticketsLoading && (
+                                                            <div className="text-center py-3">
+                                                                <Spinner animation="border" size="sm" variant="primary" />
+                                                                <span className="ms-2">Loading tickets...</span>
+                                                            </div>
+                                                        )}
+                                                        {!ticketsLoading && visibleTickets.length === 0 && (
+                                                            <div className="text-center py-3 text-muted">
+                                                                No tickets available.
+                                                            </div>
+                                                        )}
+                                                {!ticketsLoading && visibleTickets.map((ticket) => {
                                                     const qty = quantities[ticket.id] || 0;
                                                     const subtotal = qty * ticket.price;
-                                                    let endDateTimeFormatted = null;
-                                                    let isExpired = false;
-                                                    
-                                                    const activeEndDate = ticket.endDate || event?.registrationClose || event?.endDate || event?.startDate;
-                                                    const activeEndTime = ticket.endTime || event?.endTime || '23:59:59';
-
-                                                    if (activeEndDate) {
-                                                        let dateObj = dayjs(activeEndDate, ["YYYY-MM-DD", "DD-MM-YYYY", "MM/DD/YYYY", "DD/MM/YYYY", "DD MMM YYYY"], true);
-                                                        if (!dateObj.isValid()) dateObj = dayjs(activeEndDate);
-
-                                                        if (dateObj.isValid()) {
-                                                            endDateTimeFormatted = dateObj.format('MMM DD, YYYY');
-                                                            
-                                                            let finalDate = dateObj.endOf('day');
-                                                            if (activeEndTime) {
-                                                                let timeObj = dayjs(activeEndTime, ["HH:mm", "HH:mm:ss", "hh:mm A", "h:mm A", "h:mmA", "hh:mmA"], true);
-                                                                if (!timeObj.isValid()) timeObj = dayjs(`1970-01-01T${activeEndTime}`); // fallback
-                                                                if (timeObj.isValid()) {
-                                                                    finalDate = dateObj.hour(timeObj.hour()).minute(timeObj.minute()).second(timeObj.second());
-                                                                }
-                                                            }
-                                                            isExpired = finalDate.isBefore(dayjs());
-                                                        }
-                                                    }
-                                                    
-                                                    const isSoldOut = ticket.seatsRemaining <= 0;
-                                                    const isDisabled = isSoldOut || isExpired;
+                                                    const status = getTicketDateStatus(ticket);
+                                                    const isDisabled = !status.isCartAvailable;
 
                                                     return (
                                                         <div key={ticket.id} className="p-2 rounded-2 mb-3" style={{ backgroundColor: isDisabled ? "#e9ecef" : "#f8f9fa", opacity: isDisabled ? 0.7 : 1 }}>
@@ -300,14 +431,19 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                                 <span className="text-muted small" style={{ fontSize: "0.78rem" }}>
                                                                     ({ticket.seatsRemaining} seats remaining)
                                                                 </span>
-                                                                {endDateTimeFormatted && !isExpired && (
-                                                                    <div className="text-muted small mt-1" style={{ fontSize: "0.75rem" }}>
-                                                                        <i className="bi bi-clock me-1"></i> Sale will end on {endDateTimeFormatted}
+                                                                {status.isUpcoming && (
+                                                                    <div className="text-primary small mt-1 fw-semibold" style={{ fontSize: "0.8rem" }}>
+                                                                        <i className="bi bi-calendar-event me-1"></i> Sale will start on {status.startFormatted}
                                                                     </div>
                                                                 )}
-                                                                {isDisabled && (
+                                                                {!status.isUpcoming && status.endFormatted && (
+                                                                    <div className="text-muted small mt-1" style={{ fontSize: "0.75rem" }}>
+                                                                        <i className="bi bi-clock me-1"></i> Sale will end on {status.endFormatted}
+                                                                    </div>
+                                                                )}
+                                                                {status.isSoldOut && (
                                                                     <div className="text-danger small mt-1 fw-bold" style={{ fontSize: "0.8rem" }}>
-                                                                        {isSoldOut ? "Sold Out" : `Sale Ended on ${endDateTimeFormatted}`}
+                                                                        Sold Out
                                                                     </div>
                                                                 )}
                                                             </div>
@@ -349,7 +485,9 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                                             </button>
                                                                         </div>
                                                                         ) : (
-                                                                            <span className="badge bg-secondary">Unavailable</span>
+                                                                            <span className="badge bg-secondary">
+                                                                                {status.isSoldOut ? "Sold Out" : status.isUpcoming ? "Upcoming" : "Unavailable"}
+                                                                            </span>
                                                                         )}
                                                                     </div>
 
@@ -484,6 +622,8 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                         >
                                             BUY PASS
                                         </button>
+                                        )}
+                                            </>
                                         )}
                                     </Card.Body>
                                 </Card>

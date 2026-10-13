@@ -170,8 +170,8 @@ const Booking = () => {
               <thead>
                 <tr>
                   <th>Booking ID</th>
+                  <th>Date</th>
                   <th>Event & Details</th>
-                  <th>Event Date</th>
                   <th>Attendees</th>
                   <th>Amount</th>
                   <th>Status</th>
@@ -183,12 +183,14 @@ const Booking = () => {
                   <tr key={ord.id}>
                     <td className="fw-bold text-primary">#{ord.id.substring(ord.id.length - 4).toUpperCase()}</td>
                     <td>
+                      <div className="fw-semibold text-dark mb-1">{ord.bookingDate}</div>
+                    </td>
+                    <td>
                       <div className="fw-semibold text-dark mb-1">{ord.eventName}</div>
                       <div className="small text-muted d-flex align-items-center gap-1">
                         <IconifyIcon icon="lucide:map-pin" width="14" /> {ord.venue}
                       </div>
                     </td>
-                    <td className="text-nowrap">{ord.eventDate}</td>
                     <td>{ord.attendeesCount} Person(s)</td>
                     <td className="fw-bold text-dark">{ord.totalPrice}</td>
                     <td>

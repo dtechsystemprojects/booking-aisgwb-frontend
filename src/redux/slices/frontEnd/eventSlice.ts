@@ -24,6 +24,8 @@ export interface TicketType {
   name: string;
   seatsRemaining: number;
   price: number;
+  startDate?: string | null;
+  startTime?: string | null;
   endDate?: string | null;
   endTime?: string | null;
   groupId?: { _id: string; [key: string]: unknown } | string | null;
@@ -137,8 +139,9 @@ export const fetchFrontendEventTickets = createAsyncThunk<
     }
 
     const tickets = json.data || json || [];
-    const mappedTickets = (Array.isArray(tickets) ? tickets : []).map(
-      (t: any) => {
+    const mappedTickets = (Array.isArray(tickets) ? tickets : [])
+      .filter((t: any) => t.isActive !== false)
+      .map((t: any) => {
         const ticketId = t._id || t.id;
         const bookedCount = validAttendees.filter((a: any) => {
           const aTicketId = a.ticketId?._id || a.ticketId?.id || a.ticketId;
@@ -154,6 +157,8 @@ export const fetchFrontendEventTickets = createAsyncThunk<
           name: t.ticketName || t.name || "",
           seatsRemaining: calcRemaining,
           price: t.ticketPrice || t.price || 0,
+          startDate: t.startDate || null,
+          startTime: t.startTime || null,
           endDate: t.endDate || null,
           endTime: t.endTime || null,
           groupId: t.groupId || null,

@@ -115,7 +115,7 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
                             type="button" 
                             onClick={onProceed}
                             disabled={isProcessing}
-                            className="btn btn-primary flex-grow-1 py-3 rounded-pill fw-bold fs-6 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                            className="btn btn-primary flex-grow-1 py-3 rounded-pill fw-bold fs-5 d-flex align-items-center justify-content-center gap-2 shadow-sm"
                         >
                             {isProcessing ? "Processing..." : "Proceed to Payment"} 
                             {!isProcessing && <IconifyIcon icon="lucide:arrow-right" width="20" />}
