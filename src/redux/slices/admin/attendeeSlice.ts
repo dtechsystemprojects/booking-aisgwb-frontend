@@ -55,17 +55,78 @@ export const fetchAttendees = createAsyncThunk<
 
 export const fetchAttendeeById = createAsyncThunk<
   AttendeeRecord,
-  string,
+  string | { id: string; eventId?: string; ticketId?: string },
   { rejectValue: string }
->('attendees/fetchAttendeeById', async (id, { rejectWithValue }) => {
+>('attendees/fetchAttendeeById', async (arg, { rejectWithValue }) => {
   try {
+    const id = typeof arg === 'string' ? arg : arg.id;
+    const eventId = typeof arg === 'object' ? arg.eventId : undefined;
+    const ticketId = typeof arg === 'object' ? arg.ticketId : undefined;
+
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') || sessionStorage.getItem('token') : null;
+    
+    // 1. Direct fetch by ID
     const res = await fetch(`${API_BASE_URL}/admin/attendees/${id}`, {
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     });
     const json = await res.json();
     if (json.success && json.data) return json.data;
-    return rejectWithValue('Failed to fetch attendee');
+
+    // 2. Fallback: If not found directly, check attendees by eventId (or without eventId if missing)
+    // Because the QR code attendeeId might be a booking's tickets.attendees subdocument ID
+    let url = `${API_BASE_URL}/admin/attendees?limit=1000`;
+    if (eventId) {
+      url += `&eventId=${encodeURIComponent(eventId)}`;
+    }
+    const listRes = await fetch(url, {
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+    const listJson = await listRes.json();
+    if (listJson.success && Array.isArray(listJson.data)) {
+      const matched = listJson.data.find((a: any) => {
+        if (a._id === id || a.id === id) return true;
+        if (a.bookingId?.tickets && Array.isArray(a.bookingId.tickets)) {
+          return a.bookingId.tickets.some((t: any) => {
+            if (ticketId && t.ticketId) {
+              const tId = typeof t.ticketId === 'object' ? (t.ticketId._id || t.ticketId.id) : t.ticketId;
+              if (tId && tId.toString() !== ticketId.toString()) return false;
+            }
+            return t.attendees?.some((att: any) => 
+              (att._id?.toString() === id.toString() || att.id?.toString() === id.toString()) && 
+              (!a.name || a.name === att.name)
+            );
+          });
+        }
+        return false;
+      });
+
+      if (matched) return matched;
+
+      // 3. If eventId was supplied and we didn't find it, try without eventId constraint
+      if (eventId) {
+        const fullListRes = await fetch(`${API_BASE_URL}/admin/attendees?limit=1000`, {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        });
+        const fullListJson = await fullListRes.json();
+        if (fullListJson.success && Array.isArray(fullListJson.data)) {
+          const matchedFull = fullListJson.data.find((a: any) => {
+            if (a._id === id || a.id === id) return true;
+            if (a.bookingId?.tickets && Array.isArray(a.bookingId.tickets)) {
+              return a.bookingId.tickets.some((t: any) => {
+                return t.attendees?.some((att: any) => 
+                  (att._id?.toString() === id.toString() || att.id?.toString() === id.toString()) && 
+                  (!a.name || a.name === att.name)
+                );
+              });
+            }
+            return false;
+          });
+          if (matchedFull) return matchedFull;
+        }
+      }
+    }
+
+    return rejectWithValue(json.message || 'Failed to fetch attendee');
   } catch (error: any) {
     return rejectWithValue(error.message || 'Error fetching attendee');
   }
@@ -101,7 +162,8 @@ export const updateAttendee = createAsyncThunk<
 >('attendees/updateAttendee', async ({ id, payload }, { rejectWithValue }) => {
   try {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') || sessionStorage.getItem('token') : null;
-    const res = await fetch(`${API_BASE_URL}/admin/attendees/${id}`, {
+    let targetId = id;
+    let res = await fetch(`${API_BASE_URL}/admin/attendees/${targetId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -109,7 +171,40 @@ export const updateAttendee = createAsyncThunk<
       },
       body: JSON.stringify(payload),
     });
-    const json = await res.json();
+    let json = await res.json();
+
+    // If update failed, check if `id` is a subdocument ID and resolve real attendee record ID
+    if (!res.ok || !json.success) {
+      const listRes = await fetch(`${API_BASE_URL}/admin/attendees?limit=1000`, {
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      });
+      const listJson = await listRes.json();
+      if (listJson.success && Array.isArray(listJson.data)) {
+        const matched = listJson.data.find((a: any) => {
+          if (a._id === id || a.id === id) return true;
+          if (a.bookingId?.tickets && Array.isArray(a.bookingId.tickets)) {
+            return a.bookingId.tickets.some((t: any) => 
+              t.attendees?.some((att: any) => att._id === id || att.id === id)
+            );
+          }
+          return false;
+        });
+
+        if (matched && (matched._id || matched.id) && (matched._id || matched.id) !== id) {
+          targetId = matched._id || matched.id;
+          res = await fetch(`${API_BASE_URL}/admin/attendees/${targetId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(payload),
+          });
+          json = await res.json();
+        }
+      }
+    }
+
     if (!res.ok || !json.success) return rejectWithValue(json.errors || json.message || 'Failed to update attendee');
     return json.data;
   } catch (error: any) {

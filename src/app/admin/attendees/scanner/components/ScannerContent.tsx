@@ -23,6 +23,8 @@ const ScannerContent = () => {
   const [updating, setUpdating] = useState(false);
 
   const attendeeId = searchParams.get("attendeeId");
+  const eventId = searchParams.get("eventId");
+  const ticketId = searchParams.get("ticketId");
 
   useEffect(() => {
     if (!attendeeId) {
@@ -33,7 +35,11 @@ const ScannerContent = () => {
 
     const loadAttendee = async () => {
       try {
-        const data = await dispatch(fetchAttendeeById(attendeeId)).unwrap();
+        const data = await dispatch(fetchAttendeeById({
+          id: attendeeId,
+          eventId: eventId || undefined,
+          ticketId: ticketId || undefined
+        })).unwrap();
         setAttendee(data);
       } catch (err: any) {
         setError(err || "Failed to load attendee details");
@@ -43,10 +49,10 @@ const ScannerContent = () => {
     };
 
     loadAttendee();
-  }, [attendeeId, dispatch]);
+  }, [attendeeId, eventId, ticketId, dispatch]);
 
   const handleMarkAsUsed = async () => {
-    if (!attendeeId || !attendee) return;
+    if (!attendee) return;
     
     setUpdating(true);
     try {
@@ -54,7 +60,8 @@ const ScannerContent = () => {
         ticketStatus: "Used",
         checkInTime: new Date().toISOString()
       };
-      await dispatch(updateAttendee({ id: attendeeId, payload })).unwrap();
+      const updateId = (attendee._id || attendee.id || attendeeId) as string;
+      await dispatch(updateAttendee({ id: updateId, payload })).unwrap();
       
       setAttendee({ ...attendee, ticketStatus: "Used" });
       
@@ -103,6 +110,7 @@ const ScannerContent = () => {
 
   const isUsed = attendee.ticketStatus === "Used";
   const isCancelled = attendee.ticketStatus === "Cancelled";
+  const isPaymentValid = attendee.paymentStatus === "Success" || (attendee.paymentStatus as string) === "Completed" || (attendee.paymentStatus as string) === "Free";
 
   return (
     <Card className="shadow-sm border-0 mx-auto" style={{ maxWidth: "600px" }}>
@@ -130,20 +138,22 @@ const ScannerContent = () => {
           <Row className="mb-3">
             <Col xs={5} className="text-muted fw-bold small text-uppercase">Payment Status</Col>
             <Col xs={7}>
-              <span className={`badge ${attendee.paymentStatus === 'Success' ? 'bg-success' : (attendee.paymentStatus === 'Failed' ? 'bg-danger' : 'bg-warning')}`}>
+              <span className={`badge ${isPaymentValid ? 'bg-success' : (attendee.paymentStatus === 'Failed' ? 'bg-danger' : 'bg-warning')}`}>
                 {attendee.paymentStatus}
               </span>
             </Col>
           </Row>
           <Row className="mb-3">
             <Col xs={5} className="text-muted fw-bold small text-uppercase">Ticket Type</Col>
-            {/* show only if age <= underAgeLimit  and paymentStatus is Success */}
-            {parseInt(attendee.age as string) <= underAgeLimit && attendee.paymentStatus === 'Success' && (
+            {/* show only if age <= underAgeLimit and paymentStatus is valid */}
+            {parseInt(attendee.age as string) <= underAgeLimit && isPaymentValid && (
               <Col xs={7} className="fw-medium">For Accompanying Person (Under {underAgeLimit})</Col>
             )}
             {/* show only if age > underAgeLimit */}
             {(parseInt(attendee.age as string) > underAgeLimit || !attendee.age) && (
-              <Col xs={7} className="fw-medium">{typeof attendee.ticketId === 'object' ? attendee.ticketId?.ticketName : attendee.ticketId}</Col>
+              <Col xs={7} className="fw-medium">
+                {attendee.ticketName || (typeof attendee.ticketId === 'object' ? attendee.ticketId?.ticketName : attendee.ticketId) || "Event Ticket"}
+              </Col>
             )}
           </Row>
           <Row>
@@ -156,7 +166,7 @@ const ScannerContent = () => {
           <Alert variant="danger">
             This ticket has been cancelled. Do not allow entry.
           </Alert>
-        ) : attendee.paymentStatus !== "Success" ? (
+        ) : !isPaymentValid ? (
           <Alert variant="warning">
             Payment status is <strong>{attendee.paymentStatus}</strong>. Entry cannot be granted.
           </Alert>
