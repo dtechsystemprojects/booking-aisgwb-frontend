@@ -308,7 +308,7 @@ const BookingWizard = () => {
       if (isEdit && tId && (ticketSelections[tId] || 0) > 0) return true;
       if (eventRegClosed) return false;
       const status = getTicketDateStatus(t, selectedEvent);
-      return !status.isDateOver;
+      return !status.isDateOver && !status.isUpcoming;
     });
   }, [tickets, selectedEvent, eventRegClosed, eventAttendees, isEdit, ticketSelections]);
 

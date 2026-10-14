@@ -297,7 +297,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                 if (currentQty + delta > 1) {
                     Swal.fire({
                         icon: 'warning',
-                    title: 'Limit Exceeded',
+                        title: 'Limit Exceeded',
                         text: 'You can only buy one primary pass per booking.',
                     });
                     return;
@@ -315,7 +315,10 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
 
     const eventRegClosed = isEventRegistrationOver();
     const regCloseFormatted = parseDate(event?.registrationClose || event?.endDate)?.format('MMM DD, YYYY') || "";
-    const visibleTickets = eventRegClosed ? [] : tickets.filter(t => !getTicketDateStatus(t).isDateOver);
+    const visibleTickets = eventRegClosed ? [] : tickets.filter(t => {
+        const status = getTicketDateStatus(t);
+        return !status.isDateOver && !status.isUpcoming;
+    });
     const validTickets = visibleTickets.filter(t => !isTicketDisabled(t));
     const totalQuantity = validTickets.reduce((acc, t) => acc + (quantities[t.id] || 0), 0);
     const totalPrice = validTickets.reduce((acc, t) => {
@@ -497,8 +500,8 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                                             </button>
                                                                         </div>
                                                                         ) : (
-                                                                            <span className="badge bg-secondary">
-                                                                                {status.isSoldOut ? "Registration Closed" : status.isUpcoming ? "Registration Open" : "Registration Closed"}
+                                                                            <span className={`badge ${status.isUpcoming ? 'bg-warning text-dark' : 'bg-secondary'}`}>
+                                                                                {status.isSoldOut ? "Registration Closed" : status.isUpcoming ? "Upcoming" : "Registration Closed"}
                                                                             </span>
                                                                         )}
                                                                     </div>

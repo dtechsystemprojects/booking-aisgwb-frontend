@@ -74,9 +74,9 @@ const ScannerContent = () => {
       });
     } catch (err: any) {
       Swal.fire({
-        title: "Error",
+        title: "Attention!",
         text: err || "Failed to update ticket status",
-        icon: "error",
+        icon: "warning",
         confirmButtonColor: "#d33"
       });
     } finally {
@@ -86,7 +86,7 @@ const ScannerContent = () => {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
+      <div className="d-flex justify-content-center align-items-center">
         <Spinner animation="border" variant="primary" />
         <span className="ms-3">Loading ticket details...</span>
       </div>
@@ -113,7 +113,7 @@ const ScannerContent = () => {
   const isPaymentValid = attendee.paymentStatus === "Success" || (attendee.paymentStatus as string) === "Completed" || (attendee.paymentStatus as string) === "Free";
 
   return (
-    <Card className="shadow-sm border-0 mx-auto" style={{ maxWidth: "600px" }}>
+    <Card className="shadow-sm border-0 mx-auto">
       <Card.Body className="p-5 text-center">
         <div className="mb-4">
           <Icon 
@@ -182,7 +182,6 @@ const ScannerContent = () => {
             className="w-100 py-3 fw-bold"
             onClick={handleMarkAsUsed}
             disabled={updating}
-            style={{ backgroundColor: "#6259ca", borderColor: "#6259ca" }}
           >
             {updating ? (
               <><Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2"/> Updating...</>
