@@ -13,9 +13,10 @@ import Membership from "./components/Membership";
 import Booking from "./components/Booking";
 import Transactions from "./components/Transactions";
 import ProfileHead from "./components/ProfileHead";
+import Events from "../landing/components/Events";
 
 const MyAccountPage = () => {
-  const [activeTab, setActiveTab] = useState<"account" | "membership" | "bookings" | "transactions">("account");
+  const [activeTab, setActiveTab] = useState<"account" | "membership" | "bookings" | "transactions" | "events">("account");
 
   const { bookings } = useSelector((state: RootState) => state.frontendBooking);
   const { user } = useSelector((state: RootState) => state.frontendUser);
@@ -47,7 +48,7 @@ const MyAccountPage = () => {
       <main className="container my-account-wrapper flex-grow-1">
         {/* Header Profile Summary Banner */}
         <ProfileHead />
-
+        <Events />
         {/* Navigation Tabs */}
         <div className="account-nav-pills d-flex align-items-center justify-content-between mb-4">
           <ul className="nav nav-pills w-100 flex-column flex-sm-row">

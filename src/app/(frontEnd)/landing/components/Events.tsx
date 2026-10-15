@@ -19,6 +19,7 @@ const Events = () => {
   }, [dispatch]);
 
   return (
+    events.length > 0 ?(
     <section className="section-custom bg-light bg-opacity-30 border-top border-light border-bottom" id="events">
       <Container>
         <div className="event-list">
@@ -28,9 +29,7 @@ const Events = () => {
               <p className="mt-2">Loading events...</p>
             </div>
           ) : error ? (
-            <div className="text-center py-5 text-danger">
-              <h4>Error loading events: {error}</h4>
-            </div>
+            ""
           ) : events.length > 0 ? (
             events.map((event: any) => (
               <div className="event-item mb-4" key={event._id || event.id}>
@@ -69,13 +68,12 @@ const Events = () => {
               </div>
             ))
           ) : (
-            <div className="text-center py-5">
-              <h4>No upcoming events found.</h4>
-            </div>
+            ""
           )}
         </div>
       </Container>
     </section>
+    ):("")
   );
 };
 

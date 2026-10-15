@@ -25,6 +25,9 @@ export interface Booking {
   bookingStatus: string;
   createdAt: string;
   hasUsedTickets?: boolean;
+  emailSent?: boolean;
+  emailSentAt?: string;
+  emailError?: string;
 }
 
 interface BookingState {

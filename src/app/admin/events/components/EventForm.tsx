@@ -93,6 +93,19 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
 
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+
+  const getValidImageUrl = (url?: string) => {
+    if (!url) return "";
+    if (url.startsWith("blob:") || url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
+      return url;
+    }
+    if (url.startsWith("/")) {
+      return url;
+    }
+    return `/${url}`;
+  };
 
   const handleEditTicket = (ticket: Ticket) => {
     setSelectedTicket(ticket);
@@ -143,21 +156,28 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
-      setErrorMessage("Invalid file type. Only PNG, JPG, JPEG, and WEBP are allowed.");
+      setErrorMessage("Invalid file type. Only PNG, JPG, JPEG, WEBP, GIF, and SVG are allowed.");
       event.target.value = "";
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorMessage("File size exceeds 2MB limit. Please select a smaller image.");
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage("File size exceeds 5MB limit. Please select a smaller image.");
       event.target.value = "";
       return;
     }
 
-    if (field === "logo") setUploadingLogo(true);
-    else setUploadingBanner(true);
+    // Set immediate local preview for instant UI feedback
+    const blobUrl = URL.createObjectURL(file);
+    if (field === "logo") {
+      setLogoPreview(blobUrl);
+      setUploadingLogo(true);
+    } else {
+      setBannerPreview(blobUrl);
+      setUploadingBanner(true);
+    }
     setErrorMessage("");
 
     try {
@@ -174,15 +194,22 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
         const uploadedUrl = resData.data?.url || resData.url;
         if (uploadedUrl) {
           handleChange(field, uploadedUrl);
+          toast.success(`${field === "banner" ? "Banner" : "Logo"} uploaded successfully`);
         } else {
           setErrorMessage("Failed to upload file. No URL returned.");
+          if (field === "logo") setLogoPreview(null);
+          else setBannerPreview(null);
         }
       } else {
         const errData = await response.json();
         setErrorMessage(errData.message || "Failed to upload file.");
+        if (field === "logo") setLogoPreview(null);
+        else setBannerPreview(null);
       }
     } catch (err: any) {
       setErrorMessage(err.message || "Error uploading file.");
+      if (field === "logo") setLogoPreview(null);
+      else setBannerPreview(null);
     } finally {
       if (field === "logo") setUploadingLogo(false);
       else setUploadingBanner(false);
@@ -218,7 +245,10 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
       confirmButtonText: "Yes, remove it!",
     }).then((result) => {
       if (result.isConfirmed) {
+        if (field === "logo") setLogoPreview(null);
+        else setBannerPreview(null);
         removeImage(field, formData[field] || "");
+        handleChange(field, "");
       }
     });
   };
@@ -520,14 +550,29 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
                         className="bg-light"
                       />
                     </InputGroup>
-                    {formData.logo && (
-                      <div className="mt-2 position-relative d-inline-block">
-                        <Image src={formData.logo} alt="Logo Preview" width={100} height={80} style={{ objectFit: "contain", borderRadius: "4px", maxHeight: "80px" }} unoptimized />
+                    {(logoPreview || formData.logo) && (
+                      <div className="mt-2 position-relative border rounded p-1 bg-light d-inline-block">
+                        <div className="position-relative overflow-hidden rounded d-flex align-items-center justify-content-center" style={{ width: "120px", height: "80px", background: "#f8f9fa" }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={logoPreview || getValidImageUrl(formData.logo)}
+                            alt="Logo Preview"
+                            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                            onError={(e: any) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          {uploadingLogo && (
+                            <div className="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center text-white small">
+                              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            </div>
+                          )}
+                        </div>
                         <Button
                           variant="danger"
                           size="sm"
                           className="position-absolute top-0 start-100 translate-middle rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm"
-                          style={{ width: "24px", height: "24px" }}
+                          style={{ width: "24px", height: "24px", zIndex: 5 }}
                           onClick={() => handleRemoveClick("logo")}
                           title="Remove Image"
                         >
@@ -539,13 +584,13 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
                   </Col>
 
                   <Col md={4}>
-                    <FormLabel className="fw-semibold">Banner Image <span className="text-muted small fw-normal">(Images only, Max 2MB)</span></FormLabel>
+                    <FormLabel className="fw-semibold">Banner Image <span className="text-muted small fw-normal">(Images only, Max 5MB)</span></FormLabel>
                     <InputGroup className="mb-2">
                       <label className={`btn btn-light border d-flex align-items-center bg-light text-nowrap m-0 ${uploadingBanner ? 'disabled' : ''}`} style={{ cursor: "pointer" }}>
                         <Icon icon="upload" className="fs-16 me-2 text-danger"/> Choose File
                         <input
                           type="file"
-                          accept=".png,.jpg,.jpeg,.webp"
+                          accept=".png,.jpg,.jpeg,.webp,.gif,.svg"
                           hidden
                           onChange={(e: any) => handleFileUpload("banner", e)}
                           disabled={uploadingBanner}
@@ -559,14 +604,31 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
                         className="bg-light"
                       />
                     </InputGroup>
-                    {formData.banner && (
-                      <div className="mt-2 position-relative d-inline-block">
-                        <Image src={formData.banner} alt="Banner Preview" width={200} height={80} style={{ objectFit: "contain", borderRadius: "4px", maxHeight: "80px" }} unoptimized />
+                    {(bannerPreview || formData.banner) && (
+                      <div className="mt-2 position-relative border rounded p-1 bg-light d-inline-block" style={{ maxWidth: "360px", width: "100%" }}>
+                        <div className="position-relative overflow-hidden rounded" style={{ height: "130px", width: "100%", background: "#f8f9fa" }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={bannerPreview || getValidImageUrl(formData.banner)}
+                            alt="Banner Preview"
+                            className="w-100 h-100"
+                            style={{ objectFit: "cover" }}
+                            onError={(e: any) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          {uploadingBanner && (
+                            <div className="position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center text-white small fw-semibold">
+                              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                              Uploading...
+                            </div>
+                          )}
+                        </div>
                         <Button
                           variant="danger"
                           size="sm"
                           className="position-absolute top-0 start-100 translate-middle rounded-circle p-1 d-flex align-items-center justify-content-center shadow-sm"
-                          style={{ width: "24px", height: "24px" }}
+                          style={{ width: "24px", height: "24px", zIndex: 5 }}
                           onClick={() => handleRemoveClick("banner")}
                           title="Remove Image"
                         >

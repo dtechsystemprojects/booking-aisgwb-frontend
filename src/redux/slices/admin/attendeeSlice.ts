@@ -234,7 +234,7 @@ export const deleteAttendee = createAsyncThunk<
 
 export const resendTicketEmail = createAsyncThunk<
   { success: boolean; message: string },
-  { id: string; ticketPdfBase64: string; invoicePdfBase64: string },
+  { id: string; ticketPdfBase64?: string; invoicePdfBase64?: string },
   { rejectValue: string }
 >('attendees/resendTicketEmail', async ({ id, ticketPdfBase64, invoicePdfBase64 }, { rejectWithValue }) => {
   try {

@@ -377,48 +377,11 @@ const CheckoutClient = () => {
                         const bookingId = verifyData.bookingId;
                         setPdfGenerationData({ bookingId, attendees: attendeesData });
                         
-                        // Generate and Upload PDF
-                        setTimeout(async () => {
-                            const element = document.getElementById("checkout-invoice-template-container");
-                            if (element && bookingId) {
-                                try {
-                                    const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true, windowWidth: 800, logging: true });
-                                    const imgData = canvas.toDataURL("image/png");
-                                    const pdf = new jsPDF("p", "mm", "a4");
-                                    const pdfWidth = pdf.internal.pageSize.getWidth();
-                                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                                    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-                                    const pdfBase64 = pdf.output('datauristring');
-                                    
-                                    const ticketPdfBase64s = [];
-                                    for (let i = 0; i < attendeesData.length; i++) {
-                                        const ticketEl = document.getElementById(`checkout-ticket-template-${i}`);
-                                        if (ticketEl) {
-                                            const tCanvas = await html2canvas(ticketEl, { scale: 2, useCORS: true, allowTaint: true, windowWidth: 800, logging: true });
-                                            const tImgData = tCanvas.toDataURL("image/png");
-                                            const tPdf = new jsPDF("p", "mm", "a4");
-                                            const tPdfWidth = tPdf.internal.pageSize.getWidth();
-                                            const tPdfHeight = (tCanvas.height * tPdfWidth) / tCanvas.width;
-                                            tPdf.addImage(tImgData, "PNG", 0, 0, tPdfWidth, tPdfHeight);
-                                            ticketPdfBase64s.push(tPdf.output('datauristring'));
-                                        } else {
-                                            console.error(`Ticket template ${i} not found in DOM`);
-                                        }
-                                    }
-
-                                    await fetch(`${API_URL}/checkout/upload-invoice/${bookingId}`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ pdfBase64, ticketPdfBase64s })
-                                    });
-                                } catch (err) {
-                                    console.error("PDF generation/upload failed", err);
-                                }
-                            }
-                        
-                            sessionStorage.removeItem("checkoutData");
+                        //toast.success("Payment successful! Your invoice and ticket passes are being emailed to you.");
+                        sessionStorage.removeItem("checkoutData");
+                        setTimeout(() => {
                             router.push("/profile?payment_success=true");
-                        }, 300);
+                        }, 600);
                     } else {
                         toast.error("Payment verification failed. Please contact support.");
                         setIsProcessing(false);

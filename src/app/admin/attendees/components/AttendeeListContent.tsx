@@ -70,6 +70,7 @@ const AttendeeListContent: React.FC = () => {
   const [resendingAttendee, setResendingAttendee] = useState<AttendeeRecord | null>(null);
   const [resendingEventDetails, setResendingEventDetails] = useState<any>(null);
   const [downloadingTxn, setDownloadingTxn] = useState<any>(null);
+  const [resendingTicketId, setResendingTicketId] = useState<string | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [modalId, setModalId] = useState<string | null>(null);
@@ -165,11 +166,35 @@ const AttendeeListContent: React.FC = () => {
     }
   };
 
-  const handleResendTicket = async (attendeeId: string) => {
-    const attendee = attendees.find(a => (a._id || a.id) === attendeeId);
+  const handleResendTicket = async (attendeeInput: AttendeeRecord | string) => {
+    if (resendingTicketId) return;
+
+    const attendee = typeof attendeeInput === 'string'
+      ? attendees.find(a => (a._id || a.id) === attendeeInput)
+      : attendeeInput;
+
     if (!attendee) return;
 
-    toast.loading("Generating ticket...", { id: "resendTicket" });
+    const attendeeId = attendee._id || attendee.id || (typeof attendeeInput === 'string' ? attendeeInput : '');
+    if (!attendeeId) return;
+
+    const recipientName = attendee.name || "Attendee";
+    const recipientEmail = attendee.email || (attendee as any).bookingId?.billingInfo?.email || (attendee as any).bookingId?.userId?.email;
+
+    setResendingTicketId(attendeeId);
+
+    // Show immediate prominent feedback
+    toast.loading(`Sending ticket to ${recipientName}...`, { id: "resendTicket" });
+    // Swal.fire({
+    //   title: "Sending Ticket...",
+    //   html: `Generating ticket and sending email${recipientEmail ? ` to <b>${recipientEmail}</b>` : ""}...<br/><small class="text-muted">Please wait a moment</small>`,
+    //   allowOutsideClick: false,
+    //   allowEscapeKey: false,
+    //   showConfirmButton: false,
+    //   didOpen: () => {
+    //     Swal.showLoading();
+    //   }
+    // });
     
     let eventDetails = attendee.eventId;
     const eventIdStr = typeof attendee.eventId === 'string' 
@@ -198,9 +223,15 @@ const AttendeeListContent: React.FC = () => {
         fullBooking = await dispatch(fetchBookingById(bookingIdStr)).unwrap();
         
         if (fullBooking) {
-          const allTxns = await dispatch(fetchTransactions()).unwrap();
-          const matchedTxn = allTxns.find((t: any) => t.bookingId?._id === bookingIdStr || t.bookingId === bookingIdStr);
+          let allTxns: any[] = [];
+          try {
+            allTxns = await dispatch(fetchTransactions()).unwrap();
+          } catch (txErr) {
+            console.warn("fetchTransactions warning", txErr);
+          }
+          const matchedTxn = allTxns?.find((t: any) => t.bookingId?._id === bookingIdStr || t.bookingId === bookingIdStr);
 
+          const rawTickets = Array.isArray(fullBooking.tickets) ? fullBooking.tickets : [];
           provisionalTxn = {
             id: fullBooking._id || (fullBooking as any).id,
             transactionRef: matchedTxn?.transactionRef || "N/A",
@@ -211,9 +242,10 @@ const AttendeeListContent: React.FC = () => {
             status: fullBooking.paymentStatus,
             type: "Event",
             eventName: fullBooking.eventId?.title || 'Event',
-            tickets: fullBooking.tickets.flatMap((t: any) => {
-              const regularAttendees = t.attendees.filter((a: any) => !(t.ticketName && t.ticketName.includes('(Under')));
-              const underAgeAttendees = t.attendees.filter((a: any) => (t.ticketName && t.ticketName.includes('(Under')));
+            tickets: rawTickets.flatMap((t: any) => {
+              const attList = Array.isArray(t?.attendees) ? t.attendees : [];
+              const regularAttendees = attList.filter((a: any) => !(t.ticketName && t.ticketName.includes('(Under')));
+              const underAgeAttendees = attList.filter((a: any) => (t.ticketName && t.ticketName.includes('(Under')));
               const items = [];
               if (regularAttendees.length > 0) {
                 items.push({
@@ -234,14 +266,14 @@ const AttendeeListContent: React.FC = () => {
               if (items.length === 0) {
                 items.push({
                   name: t.ticketName || "Event Ticket",
-                  quantity: t.quantity,
+                  quantity: t.quantity || 1,
                   unitPrice: `₹ ${Number(t.price || 0).toFixed(2)}`,
-                  totalPrice: `₹ ${Number((t.price || 0) * t.quantity).toFixed(2)}`
+                  totalPrice: `₹ ${Number((t.price || 0) * (t.quantity || 1)).toFixed(2)}`
                 });
               }
               return items;
             }),
-            quantity: fullBooking.tickets.reduce((sum: number, t: any) => sum + t.quantity, 0),
+            quantity: rawTickets.reduce((sum: number, t: any) => sum + (t.quantity || 0), 0),
             unitPrice: `₹ ${fullBooking.totalAmount}`,
             user: { 
               name: `${fullBooking.billingInfo?.firstName || ""} ${fullBooking.billingInfo?.lastName || ""}`.trim() || "", 
@@ -256,9 +288,31 @@ const AttendeeListContent: React.FC = () => {
       }
     }
 
+    const isFreeBooking = !fullBooking || Number(fullBooking.totalAmount || 0) === 0;
     setResendingAttendee(attendee);
     setResendingEventDetails(eventDetails);
-    setDownloadingTxn(provisionalTxn || null);
+    setDownloadingTxn(!isFreeBooking ? (provisionalTxn || null) : null);
+
+    const waitForImages = async (el: HTMLElement) => {
+      const imgs = Array.from(el.querySelectorAll("img"));
+      if (imgs.length === 0) return;
+      await Promise.all(
+        imgs.map((img) => {
+          if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
+          return new Promise((resolve) => {
+            const timer = setTimeout(resolve, 2000);
+            img.onload = () => {
+              clearTimeout(timer);
+              resolve(null);
+            };
+            img.onerror = () => {
+              clearTimeout(timer);
+              resolve(null);
+            };
+          });
+        })
+      );
+    };
 
     setTimeout(async () => {
       try {
@@ -267,60 +321,55 @@ const AttendeeListContent: React.FC = () => {
 
         const ticketEl = document.getElementById(`admin-attendee-list-ticket-${attendeeId}`);
         if (ticketEl) {
-          // Wait for all images inside the ticket to fully load before capturing
-          const imgs = Array.from(ticketEl.querySelectorAll('img'));
-          await Promise.all(imgs.map(img => {
-            if (img.complete) return Promise.resolve();
-            return new Promise(resolve => {
-              img.onload = resolve;
-              img.onerror = resolve; // don't block on broken images
-            });
-          }));
-          const tCanvas = await html2canvas(ticketEl, { scale: 2, useCORS: true, allowTaint: true, windowWidth: 800, logging: true });
-          const tImgData = tCanvas.toDataURL("image/png");
-          const tPdf = new jsPDF("p", "mm", "a4");
-          const tPdfWidth = tPdf.internal.pageSize.getWidth();
-          const tPdfHeight = (tCanvas.height * tPdfWidth) / tCanvas.width;
-          tPdf.addImage(tImgData, "PNG", 0, 0, tPdfWidth, tPdfHeight);
-          ticketPdfBase64 = tPdf.output("datauristring");
+          await waitForImages(ticketEl);
+          try {
+            const tCanvas = await html2canvas(ticketEl, { scale: 2, useCORS: true, windowWidth: 800, logging: false });
+            const tImgData = tCanvas.toDataURL("image/png");
+            const tPdf = new jsPDF("p", "mm", "a4");
+            const tPdfWidth = tPdf.internal.pageSize.getWidth();
+            const tPdfHeight = (tCanvas.height * tPdfWidth) / tCanvas.width;
+            tPdf.addImage(tImgData, "PNG", 0, 0, tPdfWidth, tPdfHeight);
+            ticketPdfBase64 = tPdf.output("datauristring");
+          } catch (canvasErr) {
+            console.warn("Could not capture ticket canvas:", canvasErr);
+          }
         }
 
-        const invoiceEl = document.getElementById(`admin-booking-invoice-template-${attendeeId}`);
+        const invoiceEl = !isFreeBooking ? document.getElementById(`admin-booking-invoice-template-${attendeeId}`) : null;
         if (invoiceEl) {
-          const imgs = Array.from(invoiceEl.querySelectorAll('img'));
-          await Promise.all(imgs.map(img => {
-            if (img.complete) return Promise.resolve();
-            return new Promise(resolve => {
-              img.onload = resolve;
-              img.onerror = resolve;
-            });
-          }));
-          const iCanvas = await html2canvas(invoiceEl, { scale: 2, useCORS: true, allowTaint: true, windowWidth: 800, logging: true });
-          const iImgData = iCanvas.toDataURL("image/png");
-          const iPdf = new jsPDF("p", "mm", "a4");
-          const iPdfWidth = iPdf.internal.pageSize.getWidth();
-          const iPdfHeight = (iCanvas.height * iPdfWidth) / iCanvas.width;
-          iPdf.addImage(iImgData, "PNG", 0, 0, iPdfWidth, iPdfHeight);
-          invoicePdfBase64 = iPdf.output("datauristring");
+          await waitForImages(invoiceEl);
+          try {
+            const iCanvas = await html2canvas(invoiceEl, { scale: 2, useCORS: true, windowWidth: 800, logging: false });
+            const iImgData = iCanvas.toDataURL("image/png");
+            const iPdf = new jsPDF("p", "mm", "a4");
+            const iPdfWidth = iPdf.internal.pageSize.getWidth();
+            const iPdfHeight = (iCanvas.height * iPdfWidth) / iCanvas.width;
+            iPdf.addImage(iImgData, "PNG", 0, 0, iPdfWidth, iPdfHeight);
+            invoicePdfBase64 = iPdf.output("datauristring");
+          } catch (canvasErr) {
+            console.warn("Could not capture invoice canvas:", canvasErr);
+          }
         }
 
-        if (!ticketPdfBase64) {
-          toast.error("Could not generate Ticket PDF. Template not found.", { id: "resendTicket" });
-          return;
-        }
+        const result = await dispatch(resendTicketEmail({
+          id: attendeeId,
+          ticketPdfBase64: ticketPdfBase64 || undefined,
+          invoicePdfBase64: invoicePdfBase64 || undefined
+        })).unwrap();
 
-        toast.loading("Sending email...", { id: "resendTicket" });
-        const result = await dispatch(resendTicketEmail({ id: attendeeId, ticketPdfBase64, invoicePdfBase64 })).unwrap();
-        toast.success(result.message || "Email resent successfully", { id: "resendTicket" });
+        const successMessage = result.message || "Ticket email sent successfully";
+        toast.success(successMessage, { id: "resendTicket" })
       } catch (err: any) {
         console.error("PDF generation/email error", err);
+
         toast.error(err.message || err || "Failed to resend ticket email", { id: "resendTicket" });
       } finally {
         setResendingAttendee(null);
         setResendingEventDetails(null);
         setDownloadingTxn(null);
+        setResendingTicketId(null);
       }
-    }, 3500);
+    }, 600);
   };
 
   const columnHelper = createColumnHelper<AttendeeRecord>();
@@ -523,15 +572,34 @@ const AttendeeListContent: React.FC = () => {
             )}
 
             <Dropdown>
-              <Dropdown.Toggle variant="light" size="sm" className="btn-icon hide-arrow border">
-                <Icon icon="more-horizontal" className="fs-16 text-secondary" />
+              <Dropdown.Toggle 
+                variant="light" 
+                size="sm" 
+                className="btn-icon hide-arrow border"
+                disabled={resendingTicketId === (info.row.original._id || info.row.original.id)}
+              >
+                {resendingTicketId === (info.row.original._id || info.row.original.id) ? (
+                  <span className="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+                ) : (
+                  <Icon icon="more-horizontal" className="fs-16 text-secondary" />
+                )}
               </Dropdown.Toggle>
               <Dropdown.Menu align="end" className="shadow-sm border-0 fs-sm">
                 <Dropdown.Item 
-                  onClick={() => handleResendTicket(info.row.original._id || info.row.original.id || "")}
+                  onClick={() => handleResendTicket(info.row.original)}
+                  disabled={resendingTicketId === (info.row.original._id || info.row.original.id)}
                   className="d-flex align-items-center gap-2"
                 >
-                  <Icon icon="ticket" className="fs-14 text-muted" /> Resend Ticket
+                  {resendingTicketId === (info.row.original._id || info.row.original.id) ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+                      <span>Sending Ticket...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Icon icon="ticket" className="fs-14 text-muted" /> Resend Ticket
+                    </>
+                  )}
                 </Dropdown.Item>
                 {canDelete && info.row.original.ticketStatus !== 'Used' && (
                   <>
@@ -549,7 +617,7 @@ const AttendeeListContent: React.FC = () => {
         ),
       }),
     ],
-    [canDelete, canWrite]
+    [canDelete, canWrite, resendingTicketId]
   );
 
   const filteredAttendees = useMemo(() => {
@@ -781,7 +849,7 @@ const AttendeeListContent: React.FC = () => {
           : baseTicketName;
 
         return (
-          <div style={{ position: "absolute", top: "-9999px", left: "-9999px", width: "800px" }}>
+          <div style={{ position: "fixed", top: 0, left: 0, width: "800px", opacity: 0, pointerEvents: "none", zIndex: -9999 }}>
             <div id={`admin-attendee-list-ticket-${resendingAttendee._id || resendingAttendee.id}`}>
               <TicketTemplate 
                 attendee={{
@@ -803,7 +871,7 @@ const AttendeeListContent: React.FC = () => {
       })()}
 
       {downloadingTxn && (
-        <div style={{ position: "absolute", top: "-9999px", left: "-9999px", width: "800px" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "800px", opacity: 0, pointerEvents: "none", zIndex: -9999 }}>
           <InvoiceTemplate 
             transaction={downloadingTxn} 
             user={{ 

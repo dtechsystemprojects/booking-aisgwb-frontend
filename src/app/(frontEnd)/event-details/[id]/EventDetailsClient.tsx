@@ -344,6 +344,18 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                     ) : error ? (
                         <div className="text-center py-5 text-danger">
                             <h4>Error loading event: {error}</h4>
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm mt-3"
+                                onClick={() => {
+                                    if (eventId) {
+                                        dispatch(fetchFrontendEventById(eventId));
+                                        dispatch(fetchFrontendEventTickets(eventId));
+                                    }
+                                }}
+                            >
+                                Try Again
+                            </button>
                         </div>
                     ) : (
                     <Row className="g-4">

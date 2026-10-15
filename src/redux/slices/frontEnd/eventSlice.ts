@@ -6,16 +6,20 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
 const generateToken = async () => {
-  const secretKey =
-    process.env.NEXT_PUBLIC_JWT_SECRET ||
-    process.env.JWT_SECRET ||
-    "secret-key-change-in-production-2026";
-  const secret = new TextEncoder().encode(secretKey);
+  try {
+    const secretKey =
+      process.env.NEXT_PUBLIC_JWT_SECRET ||
+      process.env.JWT_SECRET ||
+      "secret-key-change-in-production-2026";
+    const secret = new TextEncoder().encode(secretKey);
 
-  return await new SignJWT({ source: "frontend" })
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("1h")
-    .sign(secret);
+    return await new SignJWT({ source: "frontend" })
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("1h")
+      .sign(secret);
+  } catch {
+    return null;
+  }
 };
 
 export interface TicketType {
@@ -57,18 +61,55 @@ export const fetchFrontendEvents = createAsyncThunk<
   { rejectValue: string }
 >("frontendEvents/fetchEvents", async (_, { rejectWithValue }) => {
   try {
-    const token = await generateToken();
-    const res = await fetch(`${API_BASE_URL}/events`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    if (!res.ok) throw new Error("Failed to fetch events");
+    const token =
+      (typeof window !== "undefined"
+        ? localStorage.getItem("token") || sessionStorage.getItem("token")
+        : null) || (await generateToken().catch(() => null));
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    let res: Response | null = null;
+    let fetchError: any = null;
+
+    try {
+      res = await fetch(`${API_BASE_URL}/events`, { headers });
+    } catch (err: any) {
+      fetchError = err;
+    }
+
+    if (!res || !res.ok) {
+      const fallbackUrl = API_BASE_URL.includes("localhost")
+        ? `https://api.aisgwb.org/api/events`
+        : `http://localhost:5000/api/events`;
+      try {
+        const altRes = await fetch(fallbackUrl, { headers });
+        if (altRes.ok) {
+          res = altRes;
+        }
+      } catch {
+        // ignore fallback failure
+      }
+    }
+
+    if (!res) {
+      throw fetchError || new Error("Failed to connect to events service");
+    }
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.message || `Failed to fetch events (${res.status})`);
+    }
+
     const json = await res.json();
     if (json.success && json.data) {
       return json.data;
     }
-    return rejectWithValue("Invalid data received");
+    return rejectWithValue(json.message || "Invalid data received");
   } catch (error: any) {
     return rejectWithValue(error.message || "Error fetching events");
   }
@@ -80,18 +121,57 @@ export const fetchFrontendEventById = createAsyncThunk<
   { rejectValue: string }
 >("frontendEvents/fetchEventById", async (id, { rejectWithValue }) => {
   try {
-    const token = await generateToken();
-    const res = await fetch(`${API_BASE_URL}/events/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    if (!res.ok) throw new Error("Failed to fetch event details");
+    const token =
+      (typeof window !== "undefined"
+        ? localStorage.getItem("token") || sessionStorage.getItem("token")
+        : null) || (await generateToken().catch(() => null));
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    let res: Response | null = null;
+    let fetchError: any = null;
+
+    try {
+      res = await fetch(`${API_BASE_URL}/events/${id}`, { headers });
+    } catch (err: any) {
+      fetchError = err;
+    }
+
+    // If primary failed or threw (e.g. CORS mismatch between localhost and remote API), attempt fallback
+    if (!res || !res.ok) {
+      const fallbackUrl = API_BASE_URL.includes("localhost")
+        ? `https://api.aisgwb.org/api/events/${id}`
+        : `http://localhost:5000/api/events/${id}`;
+
+      try {
+        const altRes = await fetch(fallbackUrl, { headers });
+        if (altRes.ok) {
+          res = altRes;
+        }
+      } catch {
+        // keep res or fetchError
+      }
+    }
+
+    if (!res) {
+      throw fetchError || new Error("Failed to connect to event service");
+    }
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.message || `Failed to fetch event details (${res.status})`);
+    }
+
     const json = await res.json();
     if (json.success && json.data) {
       return json.data;
     }
-    return rejectWithValue("Invalid data received");
+    return rejectWithValue(json.message || "Invalid data received");
   } catch (error: any) {
     return rejectWithValue(error.message || "Error fetching event details");
   }
@@ -104,34 +184,70 @@ export const fetchFrontendEventTickets = createAsyncThunk<
 >("frontendEvents/fetchEventTickets", async (eventId, { rejectWithValue }) => {
   try {
     const token =
-      typeof window !== "undefined"
+      (typeof window !== "undefined"
         ? localStorage.getItem("token") || sessionStorage.getItem("token")
-        : null;
-    const headers: any = {};
+        : null) || (await generateToken().catch(() => null));
+
+    const headers: Record<string, string> = {};
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const res = await fetch(`${API_BASE_URL}/events/tickets/${eventId}`, {
-      headers,
-    });
+    let res: Response | null = null;
+    let fetchError: any = null;
+
+    try {
+      res = await fetch(`${API_BASE_URL}/events/tickets/${eventId}`, {
+        headers,
+      });
+    } catch (err: any) {
+      fetchError = err;
+    }
+
+    if (!res || !res.ok) {
+      const fallbackUrl = API_BASE_URL.includes("localhost")
+        ? `https://api.aisgwb.org/api/events/tickets/${eventId}`
+        : `http://localhost:5000/api/events/tickets/${eventId}`;
+      try {
+        const altRes = await fetch(fallbackUrl, { headers });
+        if (altRes.ok) {
+          res = altRes;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!res) {
+      throw fetchError || new Error("Failed to fetch tickets");
+    }
+
     const json = await res.json();
 
     if (!res.ok) {
-      throw new Error("Failed to fetch tickets");
+      throw new Error(json.message || "Failed to fetch tickets");
     }
 
     let validAttendees: any[] = [];
     try {
-      const attendeesRes = await fetch(`${API_BASE_URL}/events/attendees`, {
-        headers,
-      });
-      if (attendeesRes.ok) {
+      let attendeesRes: Response | null = null;
+      try {
+        attendeesRes = await fetch(`${API_BASE_URL}/events/attendees`, {
+          headers,
+        });
+      } catch {
+        const fallbackUrl = API_BASE_URL.includes("localhost")
+          ? `https://api.aisgwb.org/api/events/attendees`
+          : `http://localhost:5000/api/events/attendees`;
+        attendeesRes = await fetch(fallbackUrl, { headers }).catch(() => null);
+      }
+
+      if (attendeesRes && attendeesRes.ok) {
         const attendeesJson = await attendeesRes.json();
         const allAttendees = attendeesJson.data || [];
         validAttendees = allAttendees.filter((a: any) => {
           const aEventId = a.eventId?._id || a.eventId?.id || a.eventId;
-          return aEventId === eventId && a.ticketStatus !== "Cancelled";
+          return (aEventId === eventId || aEventId?.toString() === eventId?.toString()) && a.ticketStatus !== "Cancelled";
         });
       }
     } catch (err) {
@@ -163,8 +279,7 @@ export const fetchFrontendEventTickets = createAsyncThunk<
           endTime: t.endTime || null,
           groupId: t.groupId || null,
         };
-      }
-    );
+      });
 
     return mappedTickets;
   } catch (error: any) {

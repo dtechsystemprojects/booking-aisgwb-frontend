@@ -26,6 +26,10 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ show, onHide,
 
   const handleResendInvoice = async () => {
     if (!booking) return;
+    if (Number(booking.totalAmount || 0) === 0) {
+      toast('Booking is free (₹0.00). Invoices are only generated for paid bookings.', { icon: 'ℹ️' });
+      return;
+    }
     setIsResending(true);
 
     try {
@@ -225,6 +229,35 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ show, onHide,
             ₹{booking.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </h5>
         </div>
+
+        {/* Cron Details: Email Sent & Email Sent Time (Only show when email is sent) */}
+        {Boolean(booking.emailSent) && (
+          <div className="p-3 mb-4 rounded-2 bg-light border">
+            <div className="row align-items-center">
+              <div className="col-md-4 mb-2 mb-md-0">
+                <div className="fw-semibold text-dark mb-1 d-flex align-items-center gap-1">
+                  <Icon icon="clock" className="fs-16 text-primary" />
+                  Cron Details
+                </div>
+                <span className="text-muted fs-12">Automated invoice & ticket delivery</span>
+              </div>
+              <div className="col-6 col-md-4">
+                <div className="fw-semibold text-dark mb-1">Email Sent</div>
+                <Badge bg="success-subtle" text="success" className="px-2 py-1 fs-12 rounded-pill fw-semibold">
+                  <Icon icon="check" className="me-1 fs-12" /> Yes
+                </Badge>
+              </div>
+              <div className="col-6 col-md-4">
+                <div className="fw-semibold text-dark mb-1">Email Sent Time</div>
+                <div className="text-muted fs-13">
+                  {booking.emailSentAt 
+                    ? dayjs(booking.emailSentAt).format('MMMM DD, YYYY hh:mm A')
+                    : 'Sent'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="row mb-4">
           <div className="col-md-4 mb-3">

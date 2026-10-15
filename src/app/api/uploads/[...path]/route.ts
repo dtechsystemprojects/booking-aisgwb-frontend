@@ -21,6 +21,18 @@ function getMimeType(filePath: string): string {
   }
 }
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+      "Access-Control-Allow-Headers": "*",
+      "Cross-Origin-Resource-Policy": "cross-origin",
+    },
+  });
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
@@ -31,7 +43,10 @@ export async function GET(
     const pathArray = resolvedParams.path;
     
     if (!pathArray || pathArray.length === 0) {
-      return new NextResponse("Not Found", { status: 404 });
+      return new NextResponse("Not Found", { 
+        status: 404,
+        headers: { "Access-Control-Allow-Origin": "*" }
+      });
     }
 
     const safePath = path.join(...pathArray).replace(/^(\.\.[\/\\])+/, "");
@@ -42,10 +57,18 @@ export async function GET(
       cwd = path.join(cwd, "..", "..");
     }
 
-    const filePath = path.join(cwd, "public", "uploads", safePath);
+    let filePath = path.join(cwd, "public", "uploads", safePath);
 
     if (!fs.existsSync(filePath)) {
-      return new NextResponse("Not Found", { status: 404 });
+      // Also try process.cwd() directly in case running in a different container or subfolder
+      filePath = path.join(process.cwd(), "public", "uploads", safePath);
+    }
+
+    if (!fs.existsSync(filePath)) {
+      return new NextResponse("Not Found", {
+        status: 404,
+        headers: { "Access-Control-Allow-Origin": "*" },
+      });
     }
 
     const fileBuffer = fs.readFileSync(filePath);
@@ -56,10 +79,16 @@ export async function GET(
       headers: {
         "Content-Type": mimeType,
         "Cache-Control": "public, max-age=86400, stale-while-revalidate=43200",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+        "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
   } catch (error) {
     console.error("Error serving uploaded file:", error);
-    return new NextResponse("Internal Server Error", { status: 500 });
+    return new NextResponse("Internal Server Error", { 
+      status: 500,
+      headers: { "Access-Control-Allow-Origin": "*" }
+    });
   }
 }
