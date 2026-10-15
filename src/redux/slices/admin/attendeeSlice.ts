@@ -65,8 +65,13 @@ export const fetchAttendeeById = createAsyncThunk<
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') || sessionStorage.getItem('token') : null;
     
-    // 1. Direct fetch by ID
-    const res = await fetch(`${API_BASE_URL}/admin/attendees/${id}`, {
+    // 1. Direct fetch by ID (with query params if present)
+    const queryParams = new URLSearchParams();
+    if (eventId) queryParams.append('eventId', eventId);
+    if (ticketId) queryParams.append('ticketId', ticketId);
+    const qs = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
+    const res = await fetch(`${API_BASE_URL}/admin/attendees/${id}${qs}`, {
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     });
     const json = await res.json();
@@ -87,13 +92,9 @@ export const fetchAttendeeById = createAsyncThunk<
         if (a._id === id || a.id === id) return true;
         if (a.bookingId?.tickets && Array.isArray(a.bookingId.tickets)) {
           return a.bookingId.tickets.some((t: any) => {
-            if (ticketId && t.ticketId) {
-              const tId = typeof t.ticketId === 'object' ? (t.ticketId._id || t.ticketId.id) : t.ticketId;
-              if (tId && tId.toString() !== ticketId.toString()) return false;
-            }
             return t.attendees?.some((att: any) => 
               (att._id?.toString() === id.toString() || att.id?.toString() === id.toString()) && 
-              (!a.name || a.name === att.name)
+              (!a.name || a.name.trim().toLowerCase() === att.name?.trim().toLowerCase())
             );
           });
         }
@@ -115,7 +116,7 @@ export const fetchAttendeeById = createAsyncThunk<
               return a.bookingId.tickets.some((t: any) => {
                 return t.attendees?.some((att: any) => 
                   (att._id?.toString() === id.toString() || att.id?.toString() === id.toString()) && 
-                  (!a.name || a.name === att.name)
+                  (!a.name || a.name.trim().toLowerCase() === att.name?.trim().toLowerCase())
                 );
               });
             }

@@ -99,9 +99,14 @@ const ScannerContent = () => {
         <Icon icon="mdi:close-circle" width="60" className="text-danger mx-auto mb-3" />
         <h4 className="text-danger mb-3">Error</h4>
         <p className="text-muted mb-4">{error}</p>
-        <Button variant="primary" onClick={() => router.push("/admin/attendees")}>
-          Back to Attendees
-        </Button>
+        <div className="d-flex justify-content-center gap-2">
+          <Button variant="primary" onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+          <Button variant="outline-secondary" onClick={() => router.push("/admin/attendees")}>
+            Back to Attendees
+          </Button>
+        </div>
       </Card>
     );
   }
@@ -110,7 +115,28 @@ const ScannerContent = () => {
 
   const isUsed = attendee.ticketStatus === "Used";
   const isCancelled = attendee.ticketStatus === "Cancelled";
-  const isPaymentValid = attendee.paymentStatus === "Success" || (attendee.paymentStatus as string) === "Completed" || (attendee.paymentStatus as string) === "Free";
+  const rawPayStatus = (
+    attendee.paymentStatus || 
+    (typeof attendee.bookingId === 'object' ? attendee.bookingId?.paymentStatus : undefined) || 
+    'Success'
+  ).toString();
+  const isPaymentValid = ['success', 'completed', 'free'].includes(rawPayStatus.toLowerCase());
+
+  const rawTicketName = (
+    attendee.ticketName || 
+    (typeof attendee.ticketId === 'object' ? attendee.ticketId?.ticketName : attendee.ticketId) || 
+    'Event Ticket'
+  ).toString();
+  const cleanBaseName = rawTicketName.replace(/\s*\(Under\s*\d+[^)]*\)/gi, '').trim();
+  const isAccompanyingUnderAge =
+    attendee.age &&
+    !isNaN(parseInt(attendee.age as string)) &&
+    parseInt(attendee.age as string) <= underAgeLimit &&
+    (cleanBaseName.toLowerCase().includes('accompanying') || rawTicketName.toLowerCase().includes('accompanying'));
+  const displayTicketType = isAccompanyingUnderAge
+    ? `${cleanBaseName} (Under ${underAgeLimit})`
+    : rawTicketName;
+  const eventTitle = typeof attendee.eventId === 'object' ? attendee.eventId?.title : (attendee.eventId || 'AISGWB Event');
 
   return (
     <Card className="shadow-sm border-0 mx-auto">
@@ -138,27 +164,20 @@ const ScannerContent = () => {
           <Row className="mb-3">
             <Col xs={5} className="text-muted fw-bold small text-uppercase">Payment Status</Col>
             <Col xs={7}>
-              <span className={`badge ${isPaymentValid ? 'bg-success' : (attendee.paymentStatus === 'Failed' ? 'bg-danger' : 'bg-warning')}`}>
-                {attendee.paymentStatus}
+              <span className={`badge ${isPaymentValid ? 'bg-success' : (rawPayStatus.toLowerCase() === 'failed' ? 'bg-danger' : 'bg-warning')}`}>
+                {rawPayStatus}
               </span>
             </Col>
           </Row>
           <Row className="mb-3">
             <Col xs={5} className="text-muted fw-bold small text-uppercase">Ticket Type</Col>
-            {/* show only if age <= underAgeLimit and paymentStatus is valid */}
-            {parseInt(attendee.age as string) <= underAgeLimit && isPaymentValid && (
-              <Col xs={7} className="fw-medium">For Accompanying Person (Under {underAgeLimit})</Col>
-            )}
-            {/* show only if age > underAgeLimit */}
-            {(parseInt(attendee.age as string) > underAgeLimit || !attendee.age) && (
-              <Col xs={7} className="fw-medium">
-                {attendee.ticketName || (typeof attendee.ticketId === 'object' ? attendee.ticketId?.ticketName : attendee.ticketId) || "Event Ticket"}
-              </Col>
-            )}
+            <Col xs={7} className="fw-medium">
+              {displayTicketType}
+            </Col>
           </Row>
           <Row>
             <Col xs={5} className="text-muted fw-bold small text-uppercase">Event</Col>
-            <Col xs={7} className="fw-medium">{typeof attendee.eventId === 'object' ? attendee.eventId?.title : attendee.eventId}</Col>
+            <Col xs={7} className="fw-medium">{eventTitle}</Col>
           </Row>
         </div>
 
