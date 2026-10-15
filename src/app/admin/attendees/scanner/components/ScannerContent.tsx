@@ -98,7 +98,11 @@ const ScannerContent = () => {
       <Card className="text-center p-5 shadow-sm border-0">
         <Icon icon="mdi:close-circle" width="60" className="text-danger mx-auto mb-3" />
         <h4 className="text-danger mb-3">Error</h4>
-        <p className="text-muted mb-4">{error}</p>
+        <p className="text-muted mb-4">
+          {error.toLowerCase().includes("not found")
+            ? "Attendee not found. This ticket may have been deleted or does not exist in the database."
+            : error}
+        </p>
         <div className="d-flex justify-content-center gap-2">
           <Button variant="primary" onClick={() => window.location.reload()}>
             Try Again

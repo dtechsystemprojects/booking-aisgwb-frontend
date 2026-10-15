@@ -37,8 +37,10 @@ const TopBar = () => {
                 </span>
                 <span className="logo-sm">
                   <img
-                    src={setting("general.favicon", logoSm.src)}
+                    src={setting("general.logo", logo.src)}
                     alt="small logo"
+                    height={32}
+                    style={{ objectFit: 'contain' }}
                   />
                 </span>
               </Link>
@@ -57,8 +59,13 @@ const TopBar = () => {
                 </span>
                 <span className="logo-sm">
                   <img
-                    src={setting("general.favicon", logoSm.src)}
+                    src={setting(
+                      "general.logo_dark",
+                      setting("general.logo", logo.src),
+                    )}
                     alt="small logo"
+                    height={32}
+                    style={{ objectFit: 'contain' }}
                   />
                 </span>
               </Link>

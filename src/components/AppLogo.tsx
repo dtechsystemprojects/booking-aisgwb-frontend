@@ -22,7 +22,7 @@ const AppLogo = () => {
           </span>
         ) : (
           <span className="logo-sm">
-            <Image src={setting("general.favicon", logoSm)} alt="small logo" height={32} width={32} />
+            <Image src={setting("general.logo", logo)} alt="small logo" height={32} width={32} style={{ objectFit: 'contain' }} />
           </span>
         )}
       </span>
@@ -43,7 +43,16 @@ const AppLogo = () => {
           </span>
         ) : (
           <span className="logo-sm">
-            <Image src={setting("general.favicon", logoSm)} alt="small logo" width={32} height={32} />
+            <Image
+              src={setting(
+                "general.logo_dark",
+                setting("general.logo", logo),
+              )}
+              alt="small logo"
+              width={32}
+              height={32}
+              style={{ objectFit: 'contain' }}
+            />
           </span>
         )}
       </span>
