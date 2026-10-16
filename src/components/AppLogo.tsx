@@ -34,7 +34,7 @@ const AppLogo = () => {
             style={{ objectFit: 'contain' }}
           />
           <h5
-            className={clsx("mb-0 fw-bold text-truncate", isDarkMenu ? "text-white" : "text-dark")}
+            className={clsx("mb-0 fw-bold text-truncate", isDarkMenu ? "text-white" : "text-white")}
             style={{ maxWidth: '140px', fontSize: '15px' }}
           >
             {siteTitle}
