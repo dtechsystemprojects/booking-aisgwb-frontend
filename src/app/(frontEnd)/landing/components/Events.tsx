@@ -60,7 +60,7 @@ const Events = () => {
             ""
           ) : events.length > 0 ? (
             events.map((event: any) => (
-              <div className="event-item mb-4" key={event._id || event.id}>
+              <div className="event-item" key={event._id || event.id}>
                 <div className="row align-items-center">
                   <div className="col-md-3">
                     <div className="event-thumb">
@@ -69,7 +69,7 @@ const Events = () => {
                       </EventLink>
                     </div>
                   </div>
-                  <div className="col-md-9 col-lg-7">
+                  <div className="col-md-9">
                     <div className="calendar-event-content">
                       <h3 className="calendar-event-title title event-title">
                         <EventLink eventId={event._id || event.id}>{event.title}</EventLink>

@@ -161,7 +161,9 @@ html[data-bs-theme='dark'] {
 
 @media (max-width: 375px) {
     .logo-topbar {
-        display: none !important;
+        h5 {
+            display: none;
+        }
     }
 }
 
@@ -187,15 +189,8 @@ html[data-bs-theme='dark'] {
 
 @include media-breakpoint-down(md) {
     .logo-topbar {
-        display: block;
-
-        span.logo-lg {
-            display: none;
-        }
-
-        span.logo-sm {
-            display: block;
-        }
+        display: flex;
+        align-items: center;
     }
 }
 

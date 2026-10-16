@@ -170,7 +170,8 @@ export const LayoutProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const handleResize = () => {
-      const width = window.outerWidth;
+      if (typeof window === "undefined") return;
+      const width = window.innerWidth || window.outerWidth;
 
       if (settings.orientation === "vertical") {
         if (width <= 768) {
@@ -189,6 +190,8 @@ export const LayoutProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
+    handleResize();
+
     const debouncedResize = debounce(handleResize, 200);
 
     window.addEventListener("resize", debouncedResize);
@@ -196,7 +199,7 @@ export const LayoutProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       window.removeEventListener("resize", debouncedResize);
     };
-  }, [settings.orientation, settings.sidenavSize, updateSettings]);
+  }, [settings.orientation, updateSettings]);
 
   return (
     <LayoutContext

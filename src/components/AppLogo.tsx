@@ -1,63 +1,59 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import clsx from "clsx";
 import { useSettingsContext } from "@/context/useSettingsContext";
 import { useLayoutContext } from "@/context/useLayoutContext";
 
-import logoBlack from "@/assets/images/logo-black.png";
-import logoSm from "@/assets/images/logo-sm.png";
 import logo from "@/assets/images/logo.png";
 
 const AppLogo = () => {
   const { setting } = useSettingsContext();
-  const { sidenavSize } = useLayoutContext();
+  const { sidenavSize, sidenavColor, theme } = useLayoutContext();
+
+  const isDarkMenu =
+    sidenavColor === "dark" ||
+    sidenavColor === "gradient" ||
+    sidenavColor === "image" ||
+    theme === "dark";
+
+  const logoLightSrc = setting("general.logo", logo);
+  const logoDarkSrc = setting("general.logo_dark", logoLightSrc);
+  const currentLogo = isDarkMenu ? logoLightSrc : logoDarkSrc;
+  const siteTitle = setting("general.title", "AISGWB");
 
   return (
-    <Link href="/" className="logo">
-      <span className="logo logo-light">
-        {sidenavSize !== "condensed" ? (
-          <span className="logo-lg d-flex align-items-center justify-content-center gap-2" style={{ height: '70px' }}>
-            <Image src={setting("general.logo", logo)} alt="logo" height={32} width={32} style={{ objectFit: 'contain' }} />
-            <h5 className="mb-0 text-white fw-bold text-truncate" style={{ maxWidth: '140px', fontSize: '15px' }}>{setting("general.title", "AISGWB")}</h5>
-          </span>
-        ) : (
-          <span className="logo-sm">
-            <Image src={setting("general.logo", logo)} alt="small logo" height={32} width={32} style={{ objectFit: 'contain' }} />
-          </span>
-        )}
-      </span>
-      <span className="logo logo-dark">
-        {sidenavSize !== "condensed" ? (
-          <span className="logo-lg d-flex align-items-center justify-content-center gap-2" style={{ height: '70px' }}>
-            <Image
-              src={setting(
-                "general.logo_dark",
-                setting("general.logo", logo),
-              )}
-              alt="dark logo"
-              height={32}
-              width={32}
-              style={{ objectFit: 'contain' }}
-            />
-            <h5 className="mb-0 text-dark fw-bold text-truncate" style={{ maxWidth: '140px', fontSize: '15px' }}>{setting("general.title", "AISGWB")}</h5>
-          </span>
-        ) : (
-          <span className="logo-sm">
-            <Image
-              src={setting(
-                "general.logo_dark",
-                setting("general.logo", logo),
-              )}
-              alt="small logo"
-              width={32}
-              height={32}
-              style={{ objectFit: 'contain' }}
-            />
-          </span>
-        )}
-      </span>
+    <Link href="/" className="logo d-flex align-items-center justify-content-center text-decoration-none" style={{ height: '70px' }}>
+      {sidenavSize !== "condensed" ? (
+        <span className="logo-lg d-flex align-items-center justify-content-center gap-2">
+          <Image
+            src={currentLogo}
+            alt="logo"
+            height={32}
+            width={32}
+            style={{ objectFit: 'contain' }}
+          />
+          <h5
+            className={clsx("mb-0 fw-bold text-truncate", isDarkMenu ? "text-white" : "text-dark")}
+            style={{ maxWidth: '140px', fontSize: '15px' }}
+          >
+            {siteTitle}
+          </h5>
+        </span>
+      ) : (
+        <span className="logo-sm d-flex align-items-center justify-content-center">
+          <Image
+            src={currentLogo}
+            alt="small logo"
+            height={32}
+            width={32}
+            style={{ objectFit: 'contain' }}
+          />
+        </span>
+      )}
     </Link>
   );
 };
 
 export default AppLogo;
+

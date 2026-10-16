@@ -32,8 +32,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "No base64 file data provided" }, { status: 400 });
       }
       
-      // Extract base64 data (remove data:image/png;base64, prefix if present)
-      const base64Data = base64Str.replace(/^data:image\/\w+;base64,/, "");
+      // Extract base64 data (remove data:image/...;base64, prefix if present)
+      const base64Data = base64Str.replace(/^data:image\/[\w+.-]+;base64,/, "");
       buffer = Buffer.from(base64Data, "base64");
       ext = path.extname(originalName).toLowerCase() || ".png";
       
@@ -53,11 +53,11 @@ export async function POST(req: Request) {
       ext = path.extname(file.name).toLowerCase();
     }
 
-    const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp"];
+    const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp", ".ico", ".svg", ".gif"];
 
     if (!allowedExtensions.includes(ext)) {
       return NextResponse.json(
-        { success: false, message: "Invalid file type. Only PNG, JPG, JPEG, and WEBP are allowed." },
+        { success: false, message: "Invalid file type. Only PNG, JPG, JPEG, WEBP, ICO, SVG, and GIF are allowed." },
         { status: 400 }
       );
     }

@@ -175,6 +175,12 @@ const WebsiteSettingsContent = () => {
   }, [settings, activeGroup]);
 
   const handleUpdateValue = async (id: string, newValue: any) => {
+    // Never persist temporary blob or file URLs to the database
+    if (typeof newValue === "string" && (newValue.startsWith("blob:") || newValue.startsWith("file:"))) {
+      console.warn("Rejected saving temporary blob/file URL into settings");
+      return;
+    }
+
     // Optimistic UI update
     setSettings((prev) =>
       prev.map((s) =>
@@ -222,11 +228,12 @@ const WebsiteSettingsContent = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Show temporary local preview without corrupting setting value
     const localUrl = URL.createObjectURL(file);
     setSettings((prev) =>
       prev.map((s) =>
         s.id === id
-          ? { ...s, value: localUrl, previewUrl: localUrl }
+          ? { ...s, previewUrl: localUrl }
           : s,
       ),
     );
@@ -243,29 +250,74 @@ const WebsiteSettingsContent = () => {
       : {};
 
     try {
-      // Upload directly to the Next.js server to ensure images are saved in the frontend's public/images directory
-      let response = await fetch(`/local-api/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      if (response.ok) {
-        const resData = await response.json();
-        const uploadedUrl =
-          resData.url || (resData.data && resData.data.url) || "";
-        if (uploadedUrl) {
-          await handleUpdateValue(id, uploadedUrl);
-          toast.success(
-            "File uploaded and applied to website settings successfully!",
-          );
-          setSaveMessage("File uploaded and applied across settings!");
-          setTimeout(() => setSaveMessage(""), 3500);
-          return;
+      let uploadedUrl = "";
+
+      // 1. Upload to Next.js local upload API
+      try {
+        const response = await fetch(`/local-api/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        if (response.ok) {
+          const resData = await response.json();
+          uploadedUrl = resData.url || (resData.data && resData.data.url) || "";
+        }
+      } catch (e) {
+        console.warn("Local upload endpoint failed, trying backend:", e);
+      }
+
+      // 2. Fallback to backend API upload if local upload didn't return a URL
+      if (!uploadedUrl) {
+        try {
+          let beResponse = await fetch(`${API_URL}/admin/settings/upload`, {
+            method: "POST",
+            headers,
+            body: formData,
+          });
+          if (!beResponse.ok) {
+            beResponse = await fetch(`${API_URL}/settings/upload`, {
+              method: "POST",
+              headers,
+              body: formData,
+            });
+          }
+          if (beResponse.ok) {
+            const resData = await beResponse.json();
+            uploadedUrl = resData.url || (resData.data && resData.data.url) || "";
+          }
+        } catch (beErr) {
+          console.warn("Backend upload endpoint failed:", beErr);
         }
       }
-      toast.success("File attached (local state fallback)");
-    } catch (err) {
-      console.warn("File upload offline/fallback:", err);
-      toast.success("File attached (local fallback state)");
+
+      if (uploadedUrl) {
+        await handleUpdateValue(id, uploadedUrl);
+        toast.success(
+          "File uploaded and applied to website settings successfully!",
+        );
+        setSaveMessage("File uploaded and applied across settings!");
+        setTimeout(() => setSaveMessage(""), 3500);
+      } else {
+        toast.error("File upload failed. Please ensure the file is a valid image or icon (.ico, .png, .jpg, .svg).");
+        // Revert preview back to current valid value
+        setSettings((prev) =>
+          prev.map((s) =>
+            s.id === id
+              ? { ...s, previewUrl: typeof s.value === "string" ? s.value : "" }
+              : s,
+          ),
+        );
+      }
+    } catch (err: any) {
+      console.warn("File upload error:", err);
+      toast.error(err?.message || "File upload failed");
+      setSettings((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? { ...s, previewUrl: typeof s.value === "string" ? s.value : "" }
+            : s,
+        ),
+      );
     }
   };
 
@@ -886,11 +938,6 @@ const WebsiteSettingsContent = () => {
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            const localUrl = URL.createObjectURL(file);
-                            setNewSetting((prev) => ({
-                              ...prev,
-                              value: localUrl,
-                            }));
                             const formData = new FormData();
                             formData.append("file", file);
                             const token =
@@ -902,28 +949,52 @@ const WebsiteSettingsContent = () => {
                               ? { Authorization: `Bearer ${token}` }
                               : {};
                             try {
-                              let response = await fetch(
-                                `${API_URL}/admin/settings/upload`,
-                                { method: "POST", headers, body: formData },
-                              );
-                              if (!response.ok)
-                                response = await fetch(
-                                  `${API_URL}/settings/upload`,
+                              let uploadedUrl = "";
+                              try {
+                                const response = await fetch(`/local-api/upload`, {
+                                  method: "POST",
+                                  body: formData,
+                                });
+                                if (response.ok) {
+                                  const resData = await response.json();
+                                  uploadedUrl =
+                                    resData.url ||
+                                    (resData.data && resData.data.url) ||
+                                    "";
+                                }
+                              } catch (e) {}
+
+                              if (!uploadedUrl) {
+                                let response = await fetch(
+                                  `${API_URL}/admin/settings/upload`,
                                   { method: "POST", headers, body: formData },
                                 );
-                              if (response.ok) {
-                                const resData = await response.json();
-                                const uploadedUrl =
-                                  resData.url ||
-                                  (resData.data && resData.data.url) ||
-                                  "";
-                                if (uploadedUrl)
-                                  setNewSetting((prev) => ({
-                                    ...prev,
-                                    value: uploadedUrl,
-                                  }));
+                                if (!response.ok)
+                                  response = await fetch(
+                                    `${API_URL}/settings/upload`,
+                                    { method: "POST", headers, body: formData },
+                                  );
+                                if (response.ok) {
+                                  const resData = await response.json();
+                                  uploadedUrl =
+                                    resData.url ||
+                                    (resData.data && resData.data.url) ||
+                                    "";
+                                }
                               }
-                            } catch (err) {}
+
+                              if (uploadedUrl) {
+                                setNewSetting((prev) => ({
+                                  ...prev,
+                                  value: uploadedUrl,
+                                }));
+                                toast.success("File uploaded successfully!");
+                              } else {
+                                toast.error("File upload failed. Please try a valid image/icon.");
+                              }
+                            } catch (err) {
+                              toast.error("File upload failed.");
+                            }
                           }}
                         />
                       </label>

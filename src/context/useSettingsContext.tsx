@@ -144,15 +144,17 @@ export const SettingsProvider = ({
         }
       }
 
-      // 2. Sync Dynamic Favicon (setting('general.favicon'))
-      const siteFavicon = getSettingValue(
-        items,
-        "setting('general.favicon')",
-        "",
-      );
+      // 2. Sync Dynamic Favicon (general.favicon)
+      const siteFavicon =
+        getSettingValue(items, "general.favicon", "") ||
+        getSettingValue(items, "setting('general.favicon')", "");
       if (siteFavicon && typeof siteFavicon === "string") {
         const cleanFavicon = siteFavicon.trim();
-        if (cleanFavicon) {
+        if (
+          cleanFavicon &&
+          !cleanFavicon.startsWith("blob:") &&
+          !cleanFavicon.startsWith("file:")
+        ) {
           let link: HTMLLinkElement | null =
             document.querySelector("link[rel*='icon']");
           if (!link) {
