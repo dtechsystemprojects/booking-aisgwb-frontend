@@ -820,17 +820,6 @@ html[data-skin="modern"]:not([data-sidenav-size="condensed"]) {
   }
 }
 
-my-account-wrapper .section-custom {
-  padding: 30px 20px;
-  border: 1px solid #222;
-  border-radius: 15px;
-  margin-bottom: 30px;
-}
-.my-account-wrapper .section-custom .event-list .event-item .calendar-event-content .event-title {
-  margin-bottom: 10px;
-}
-
-
 .account-avatar-wrapper {
   position: relative;
   width: 90px;
@@ -1243,6 +1232,17 @@ my-account-wrapper .section-custom {
     border: 1px solid #000;
     box-shadow: none;
   }
+}
+
+
+.my-account-wrapper .section-custom {
+  padding: 30px 20px;
+  border: 1px solid #222;
+  border-radius: 15px;
+  margin-bottom: 30px;
+}
+.my-account-wrapper .section-custom .event-list .event-item .calendar-event-content .event-title {
+  margin-bottom: 10px;
 }
 
 @media (max-width: 1024px) {
