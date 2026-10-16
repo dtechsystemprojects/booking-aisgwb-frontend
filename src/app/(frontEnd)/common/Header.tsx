@@ -125,7 +125,7 @@ export default function Header() {
     const fetchMenu = async () => {
       try {
         const res = await fetch(
-          "https://dtechsystem.co.in/aisgwb/wp-json/aisgwb/v1/header-menu?location=primary_menu"
+          "https://aisgwb.org/aisgwb/wp-json/v1/header-menu?location=primary_menu"
         );
         const data = await res.json();
 
@@ -229,7 +229,7 @@ export default function Header() {
                     ) : (
                       <>
                         <li className="nav-item">
-                          <Link className="nav-link fs-xs" href={'https://dtechsystem.co.in/aisgwb/'}>
+                          <Link className="nav-link fs-xs" href={'https://aisgwb.org/aisgwb/'}>
                             Home
                           </Link>
                         </li>
@@ -278,8 +278,8 @@ export default function Header() {
                         </>
                       ) : (
                         <>
-                          <DropdownItem href="/login">Login</DropdownItem>
                           <DropdownItem href="/register">Register</DropdownItem>
+                          <DropdownItem href="/login">Login</DropdownItem>
                         </>
                       )}
                     </DropdownMenu>

@@ -37,7 +37,7 @@ const Events = () => {
                   <div className="col-md-3">
                     <div className="event-thumb">
                       <EventLink eventId={event._id || event.id}>
-                        <Image src={event.banner || event.logo || "https://dtechsystem.co.in/aisgwb/wp-content/uploads/2025/12/29th-annual-Conference.jpg"} alt={event.title} width={200} height={200} className="img-fluid rounded" />
+                        <Image src={event.banner || event.logo || "https://aisgwb.org/aisgwb/wp-content/uploads/2025/12/29th-annual-Conference.jpg"} alt={event.title} width={200} height={200} className="img-fluid rounded" />
                       </EventLink>
                     </div>
                   </div>

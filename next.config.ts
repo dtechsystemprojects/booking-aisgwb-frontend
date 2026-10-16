@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'dtechsystem.co.in',
+        hostname: 'aisgwb.org',
       },
       {
         protocol: 'https',
