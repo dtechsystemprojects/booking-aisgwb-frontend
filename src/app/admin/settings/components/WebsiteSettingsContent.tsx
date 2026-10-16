@@ -238,9 +238,6 @@ const WebsiteSettingsContent = () => {
       ),
     );
 
-    const formData = new FormData();
-    formData.append("file", file);
-
     const token =
       typeof window !== "undefined"
         ? localStorage.getItem("token") || sessionStorage.getItem("token")
@@ -249,57 +246,103 @@ const WebsiteSettingsContent = () => {
       ? { Authorization: `Bearer ${token}` }
       : {};
 
-    try {
-      let uploadedUrl = "";
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = reader.result as string;
 
-      // 1. Upload to Next.js local upload API
       try {
-        const response = await fetch(`/local-api/upload`, {
-          method: "POST",
-          body: formData,
-        });
-        if (response.ok) {
-          const resData = await response.json();
-          uploadedUrl = resData.url || (resData.data && resData.data.url) || "";
-        }
-      } catch (e) {
-        console.warn("Local upload endpoint failed, trying backend:", e);
-      }
+        let uploadedUrl = "";
+        let errorMsg = "";
 
-      // 2. Fallback to backend API upload if local upload didn't return a URL
-      if (!uploadedUrl) {
+        // 1. Try local-api/upload with base64 JSON (same proven pattern as ProfileForm/ProfileHead)
         try {
-          let beResponse = await fetch(`${API_URL}/admin/settings/upload`, {
+          const res = await fetch(`/local-api/upload`, {
             method: "POST",
-            headers,
-            body: formData,
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              fileBase64: base64String,
+              fileName: file.name,
+            }),
           });
-          if (!beResponse.ok) {
-            beResponse = await fetch(`${API_URL}/settings/upload`, {
+          const resData = await res.json().catch(() => ({}));
+          if (res.ok && (resData.url || resData.data?.url)) {
+            uploadedUrl = resData.url || resData.data?.url;
+          } else if (resData?.message) {
+            errorMsg = resData.message;
+          }
+        } catch (e) {
+          console.warn("Base64 upload attempt error:", e);
+        }
+
+        // 2. Fallback to FormData to /local-api/upload
+        if (!uploadedUrl) {
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const fdRes = await fetch(`/local-api/upload`, {
+              method: "POST",
+              body: formData,
+            });
+            const resData = await fdRes.json().catch(() => ({}));
+            if (fdRes.ok && (resData.url || resData.data?.url)) {
+              uploadedUrl = resData.url || resData.data?.url;
+            } else if (resData?.message) {
+              errorMsg = resData.message;
+            }
+          } catch (fdErr) {
+            console.warn("FormData upload attempt error:", fdErr);
+          }
+        }
+
+        // 3. Fallback to backend API upload
+        if (!uploadedUrl) {
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            let beResponse = await fetch(`${API_URL}/admin/settings/upload`, {
               method: "POST",
               headers,
               body: formData,
             });
+            if (!beResponse.ok) {
+              beResponse = await fetch(`${API_URL}/settings/upload`, {
+                method: "POST",
+                headers,
+                body: formData,
+              });
+            }
+            const resData = await beResponse.json().catch(() => ({}));
+            if (beResponse.ok && (resData.url || resData.data?.url)) {
+              uploadedUrl = resData.url || resData.data?.url;
+            } else if (resData?.message) {
+              errorMsg = resData.message;
+            }
+          } catch (beErr) {
+            console.warn("Backend upload endpoint failed:", beErr);
           }
-          if (beResponse.ok) {
-            const resData = await beResponse.json();
-            uploadedUrl = resData.url || (resData.data && resData.data.url) || "";
-          }
-        } catch (beErr) {
-          console.warn("Backend upload endpoint failed:", beErr);
         }
-      }
 
-      if (uploadedUrl) {
-        await handleUpdateValue(id, uploadedUrl);
-        toast.success(
-          "File uploaded and applied to website settings successfully!",
-        );
-        setSaveMessage("File uploaded and applied across settings!");
-        setTimeout(() => setSaveMessage(""), 3500);
-      } else {
-        toast.error("File upload failed. Please ensure the file is a valid image or icon (.ico, .png, .jpg, .svg).");
-        // Revert preview back to current valid value
+        if (uploadedUrl) {
+          await handleUpdateValue(id, uploadedUrl);
+          toast.success("File uploaded and applied to website settings successfully!");
+          setSaveMessage("File uploaded and applied across settings!");
+          setTimeout(() => setSaveMessage(""), 3500);
+        } else {
+          toast.error(errorMsg || "File upload failed. Please try again.");
+          // Revert preview back to current valid value
+          setSettings((prev) =>
+            prev.map((s) =>
+              s.id === id
+                ? { ...s, previewUrl: typeof s.value === "string" ? s.value : "" }
+                : s,
+            ),
+          );
+        }
+      } catch (err: any) {
+        console.warn("File upload error:", err);
+        toast.error(err?.message || "File upload failed");
         setSettings((prev) =>
           prev.map((s) =>
             s.id === id
@@ -308,9 +351,10 @@ const WebsiteSettingsContent = () => {
           ),
         );
       }
-    } catch (err: any) {
-      console.warn("File upload error:", err);
-      toast.error(err?.message || "File upload failed");
+    };
+
+    reader.onerror = () => {
+      toast.error("Failed to read the selected file.");
       setSettings((prev) =>
         prev.map((s) =>
           s.id === id
@@ -318,7 +362,9 @@ const WebsiteSettingsContent = () => {
             : s,
         ),
       );
-    }
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const handleUpdateGroup = async (id: string, newGroup: string) => {
@@ -935,11 +981,10 @@ const WebsiteSettingsContent = () => {
                           type="file"
                           className="d-none"
                           accept="image/*,.ico,.svg,.pdf"
-                          onChange={async (e) => {
+                          onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            const formData = new FormData();
-                            formData.append("file", file);
+
                             const token =
                               typeof window !== "undefined"
                                 ? localStorage.getItem("token") ||
@@ -948,53 +993,93 @@ const WebsiteSettingsContent = () => {
                             const headers: HeadersInit = token
                               ? { Authorization: `Bearer ${token}` }
                               : {};
-                            try {
-                              let uploadedUrl = "";
+
+                            const reader = new FileReader();
+                            reader.onloadend = async () => {
+                              const base64String = reader.result as string;
+
                               try {
-                                const response = await fetch(`/local-api/upload`, {
-                                  method: "POST",
-                                  body: formData,
-                                });
-                                if (response.ok) {
-                                  const resData = await response.json();
-                                  uploadedUrl =
-                                    resData.url ||
-                                    (resData.data && resData.data.url) ||
-                                    "";
-                                }
-                              } catch (e) {}
+                                let uploadedUrl = "";
+                                let errorMsg = "";
 
-                              if (!uploadedUrl) {
-                                let response = await fetch(
-                                  `${API_URL}/admin/settings/upload`,
-                                  { method: "POST", headers, body: formData },
-                                );
-                                if (!response.ok)
-                                  response = await fetch(
-                                    `${API_URL}/settings/upload`,
-                                    { method: "POST", headers, body: formData },
-                                  );
-                                if (response.ok) {
-                                  const resData = await response.json();
-                                  uploadedUrl =
-                                    resData.url ||
-                                    (resData.data && resData.data.url) ||
-                                    "";
-                                }
-                              }
+                                // 1. Try local-api/upload with base64
+                                try {
+                                  const response = await fetch(`/local-api/upload`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      fileBase64: base64String,
+                                      fileName: file.name,
+                                    }),
+                                  });
+                                  const resData = await response.json().catch(() => ({}));
+                                  if (response.ok && (resData.url || resData.data?.url)) {
+                                    uploadedUrl = resData.url || resData.data?.url;
+                                  } else if (resData?.message) {
+                                    errorMsg = resData.message;
+                                  }
+                                } catch (e) {}
 
-                              if (uploadedUrl) {
-                                setNewSetting((prev) => ({
-                                  ...prev,
-                                  value: uploadedUrl,
-                                }));
-                                toast.success("File uploaded successfully!");
-                              } else {
-                                toast.error("File upload failed. Please try a valid image/icon.");
+                                // 2. Fallback to FormData to /local-api/upload
+                                if (!uploadedUrl) {
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append("file", file);
+                                    const fdRes = await fetch(`/local-api/upload`, {
+                                      method: "POST",
+                                      body: formData,
+                                    });
+                                    const resData = await fdRes.json().catch(() => ({}));
+                                    if (fdRes.ok && (resData.url || resData.data?.url)) {
+                                      uploadedUrl = resData.url || resData.data?.url;
+                                    } else if (resData?.message) {
+                                      errorMsg = resData.message;
+                                    }
+                                  } catch (e) {}
+                                }
+
+                                // 3. Fallback to backend API upload
+                                if (!uploadedUrl) {
+                                  try {
+                                    const formData = new FormData();
+                                    formData.append("file", file);
+                                    let response = await fetch(
+                                      `${API_URL}/admin/settings/upload`,
+                                      { method: "POST", headers, body: formData },
+                                    );
+                                    if (!response.ok)
+                                      response = await fetch(
+                                        `${API_URL}/settings/upload`,
+                                        { method: "POST", headers, body: formData },
+                                      );
+                                    const resData = await response.json().catch(() => ({}));
+                                    if (response.ok && (resData.url || resData.data?.url)) {
+                                      uploadedUrl = resData.url || resData.data?.url;
+                                    } else if (resData?.message) {
+                                      errorMsg = resData.message;
+                                    }
+                                  } catch (e) {}
+                                }
+
+                                if (uploadedUrl) {
+                                  setNewSetting((prev) => ({
+                                    ...prev,
+                                    value: uploadedUrl,
+                                  }));
+                                  toast.success("File uploaded successfully!");
+                                } else {
+                                  toast.error(errorMsg || "File upload failed. Please try again.");
+                                }
+                              } catch (err: any) {
+                                toast.error(err?.message || "File upload failed.");
                               }
-                            } catch (err) {
-                              toast.error("File upload failed.");
-                            }
+                            };
+
+                            reader.onerror = () => {
+                              toast.error("Failed to read the selected file.");
+                            };
+
+                            reader.readAsDataURL(file);
                           }}
                         />
                       </label>

@@ -14,6 +14,7 @@ import Booking from "./components/Booking";
 import Transactions from "./components/Transactions";
 import ProfileHead from "./components/ProfileHead";
 import Events from "../landing/components/Events";
+import { useSettingsContext } from "@/context/useSettingsContext";
 
 import FrontendProtectedRoute from "@/components/FrontendProtectedRoute";
 
@@ -24,6 +25,8 @@ const MyAccountContent = () => {
   const { user } = useSelector((state: RootState) => state.frontendUser);
   const hasMembership = !!user?.memberId;
   const dispatch = useDispatch<AppDispatch>();
+  const { setting } = useSettingsContext();
+  const enableEvent = setting("general.enable_event");
   
   useEffect(() => {
     dispatch(fetchFrontendBookings());
@@ -50,7 +53,7 @@ const MyAccountContent = () => {
       <main className="container my-account-wrapper flex-grow-1">
         {/* Header Profile Summary Banner */}
         <ProfileHead />
-        <Events />
+        {enableEvent && <Events />}
         {/* Navigation Tabs */}
         <div className="account-nav-pills d-flex align-items-center justify-content-between mb-4">
           <ul className="nav nav-pills w-100 flex-column flex-sm-row">

@@ -32,11 +32,18 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, message: "No base64 file data provided" }, { status: 400 });
       }
       
-      // Extract base64 data (remove data:image/...;base64, prefix if present)
-      const base64Data = base64Str.replace(/^data:image\/[\w+.-]+;base64,/, "");
+      // Extract base64 data (remove data:*;base64, prefix if present)
+      const base64Data = base64Str.replace(/^data:[^;]+;base64,/, "");
       buffer = Buffer.from(base64Data, "base64");
-      ext = path.extname(originalName).toLowerCase() || ".png";
-      
+      ext = path.extname(originalName).toLowerCase();
+      if (!ext || ext === ".") {
+        if (base64Str.includes("image/png")) ext = ".png";
+        else if (base64Str.includes("image/jpeg") || base64Str.includes("image/jpg")) ext = ".jpg";
+        else if (base64Str.includes("image/webp")) ext = ".webp";
+        else if (base64Str.includes("icon")) ext = ".ico";
+        else if (base64Str.includes("svg")) ext = ".svg";
+        else ext = ".png";
+      }
     } else {
       const formData = await req.formData();
       const file = formData.get("file") as File | null;
@@ -50,7 +57,15 @@ export async function POST(req: Request) {
       }
 
       buffer = Buffer.from(await file.arrayBuffer());
-      ext = path.extname(file.name).toLowerCase();
+      ext = (file.name ? path.extname(file.name) : "").toLowerCase();
+      if (!ext || ext === ".") {
+        if (file.type === "image/png") ext = ".png";
+        else if (file.type === "image/jpeg") ext = ".jpg";
+        else if (file.type === "image/webp") ext = ".webp";
+        else if (file.type?.includes("icon")) ext = ".ico";
+        else if (file.type?.includes("svg")) ext = ".svg";
+        else ext = ".png";
+      }
     }
 
     const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp", ".ico", ".svg", ".gif"];
