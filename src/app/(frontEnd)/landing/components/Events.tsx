@@ -10,6 +10,34 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/redux/store";
 import { fetchFrontendEvents } from "@/redux/slices/frontEnd/eventSlice";
 
+const DEFAULT_EVENT_BANNER = "https://aisgwb.org/aisgwb/wp-content/uploads/2025/12/29th-annual-Conference.jpg";
+
+const EventThumbnail = ({ banner, logo, title }: { banner?: string; logo?: string; title?: string }) => {
+  const initialSrc = banner || logo || DEFAULT_EVENT_BANNER;
+  const [imgSrc, setImgSrc] = React.useState(initialSrc);
+
+  React.useEffect(() => {
+    setImgSrc(banner || logo || DEFAULT_EVENT_BANNER);
+  }, [banner, logo]);
+
+  return (
+    <Image
+      src={imgSrc}
+      alt={title || "Event Banner"}
+      width={300}
+      height={200}
+      className="img-fluid rounded w-100"
+      style={{ objectFit: "cover", height: "180px" }}
+      unoptimized
+      onError={() => {
+        if (imgSrc !== DEFAULT_EVENT_BANNER) {
+          setImgSrc(DEFAULT_EVENT_BANNER);
+        }
+      }}
+    />
+  );
+};
+
 const Events = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { events, loading, error } = useSelector((state: RootState) => state.frontendEvents);
@@ -37,7 +65,7 @@ const Events = () => {
                   <div className="col-md-3">
                     <div className="event-thumb">
                       <EventLink eventId={event._id || event.id}>
-                        <Image src={event.banner || event.logo || "https://aisgwb.org/aisgwb/wp-content/uploads/2025/12/29th-annual-Conference.jpg"} alt={event.title} width={200} height={200} className="img-fluid rounded" />
+                        <EventThumbnail banner={event.banner} logo={event.logo} title={event.title} />
                       </EventLink>
                     </div>
                   </div>

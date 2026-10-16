@@ -19,7 +19,6 @@ const Page = () => {
               <Card className="p-4">
                 <div
                   className="position-absolute top-0 end-0"
-                  style={{ width: "180px" }}
                 >
                   <Image
                     src={authcard}

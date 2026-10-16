@@ -53,6 +53,13 @@ export async function proxy(req: NextRequest) {
     }
   }
 
+  // Protected frontend routes: /profile
+  if (pathname.startsWith("/profile")) {
+    if (!isAuthenticated) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+  }
+
   // Auth pages check: if already authenticated, redirect away from admin login pages
   if (isAuthenticated && pathname.startsWith("/auth")) {
     if (isFrontendUser) {
@@ -75,5 +82,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/auth/:path*", "/"],
+  matcher: ["/admin/:path*", "/auth/:path*", "/profile/:path*", "/profile", "/"],
 };

@@ -60,8 +60,20 @@ export async function GET(
     let filePath = path.join(cwd, "public", "uploads", safePath);
 
     if (!fs.existsSync(filePath)) {
-      // Also try process.cwd() directly in case running in a different container or subfolder
-      filePath = path.join(process.cwd(), "public", "uploads", safePath);
+      // Check if this is an image request and provide fallback if missing
+      const ext = path.extname(safePath).toLowerCase();
+      if ([".jpg", ".jpeg", ".png", ".webp"].includes(ext)) {
+        const fallbackCandidates = [
+          path.join(cwd, "public", "uploads", "1692506a-9c61-4255-a1e0-d41c3e7ab514.webp"),
+          path.join(cwd, "src", "assets", "images", "banner01.webp"),
+        ];
+        for (const candidate of fallbackCandidates) {
+          if (fs.existsSync(candidate)) {
+            filePath = candidate;
+            break;
+          }
+        }
+      }
     }
 
     if (!fs.existsSync(filePath)) {

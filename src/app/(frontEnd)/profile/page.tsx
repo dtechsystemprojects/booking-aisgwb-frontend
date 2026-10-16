@@ -15,7 +15,9 @@ import Transactions from "./components/Transactions";
 import ProfileHead from "./components/ProfileHead";
 import Events from "../landing/components/Events";
 
-const MyAccountPage = () => {
+import FrontendProtectedRoute from "@/components/FrontendProtectedRoute";
+
+const MyAccountContent = () => {
   const [activeTab, setActiveTab] = useState<"account" | "membership" | "bookings" | "transactions" | "events">("account");
 
   const { bookings } = useSelector((state: RootState) => state.frontendBooking);
@@ -102,6 +104,14 @@ const MyAccountPage = () => {
 
       <Footer />
     </div>
+  );
+};
+
+const MyAccountPage = () => {
+  return (
+    <FrontendProtectedRoute requireAuth={true}>
+      <MyAccountContent />
+    </FrontendProtectedRoute>
   );
 };
 

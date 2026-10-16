@@ -12,8 +12,11 @@ const FrontendProtectedRoute: React.FC<FrontendProtectedRouteProps> = ({
   children,
   requireAuth = true,
 }) => {
-  const { loading, checked, isAuthenticated, user } = useAppSelector(
+  const { checked, isAuthenticated, user } = useAppSelector(
     (state) => state.auth,
+  );
+  const { isAuthenticated: frontendIsAuthenticated, user: frontendUser } = useAppSelector(
+    (state) => state.frontendUser,
   );
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -22,41 +25,63 @@ const FrontendProtectedRoute: React.FC<FrontendProtectedRouteProps> = ({
     setMounted(true);
   }, []);
 
-  const isAuthReady = mounted && (checked || (!requireAuth && !isAuthenticated) || (requireAuth && isAuthenticated));
+  const hasToken =
+    typeof window !== "undefined" &&
+    Boolean(
+      localStorage.getItem("token") ||
+        localStorage.getItem("frontend_token") ||
+        sessionStorage.getItem("token") ||
+        sessionStorage.getItem("frontend_token")
+    );
+
+  const isUserAuthenticated = Boolean(
+    isAuthenticated || frontendIsAuthenticated || hasToken
+  );
 
   useEffect(() => {
     if (!mounted) return;
-    
-    // Redirect instantly if local state says they don't belong here
-    if (requireAuth && checked && !isAuthenticated) {
-      router.replace("/login");
-    } else if (!requireAuth && isAuthenticated) {
-      router.replace("/profile");
+
+    if (requireAuth) {
+      if (!hasToken || (checked && !isAuthenticated && !frontendIsAuthenticated)) {
+        router.replace("/login");
+      }
+    } else {
+      if (isUserAuthenticated) {
+        router.replace("/profile");
+      }
     }
-  }, [mounted, checked, isAuthenticated, requireAuth, router, user]);
+  }, [
+    mounted,
+    checked,
+    isAuthenticated,
+    frontendIsAuthenticated,
+    hasToken,
+    isUserAuthenticated,
+    requireAuth,
+    router,
+  ]);
 
   if (!mounted) return null;
 
-  // Show spinner ONLY if we are waiting on server confirmation that is strictly required to decide what to show
-  // (e.g., requireAuth is true, but we don't have local isAuthenticated yet)
-  if (!checked && requireAuth && !isAuthenticated) {
-    return (
-      <div
-        className="d-flex justify-content-center align-items-center w-100"
-        style={{ minHeight: "100vh" }}
-      >
-        <div className="spinner-border text-danger" role="status">
-          <span className="visually-hidden">Loading...</span>
+  if (requireAuth) {
+    if (!hasToken || (checked && !isAuthenticated && !frontendIsAuthenticated)) {
+      return null;
+    }
+    if (!checked && !isUserAuthenticated) {
+      return (
+        <div
+          className="d-flex justify-content-center align-items-center w-100"
+          style={{ minHeight: "100vh" }}
+        >
+          <div className="spinner-border text-danger" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
-  if (requireAuth && !isAuthenticated) {
-    return null;
-  }
-
-  if (!requireAuth && isAuthenticated) {
+  if (!requireAuth && isUserAuthenticated) {
     return null;
   }
 
@@ -64,3 +89,4 @@ const FrontendProtectedRoute: React.FC<FrontendProtectedRouteProps> = ({
 };
 
 export default FrontendProtectedRoute;
+

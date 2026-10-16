@@ -19,7 +19,7 @@ import Swal from "sweetalert2";
 import { Icon as IconifyIcon } from "@iconify/react";
 dayjs.extend(customParseFormat);
 
-
+const DEFAULT_EVENT_BANNER = "https://aisgwb.org/aisgwb/wp-content/uploads/2025/12/29th-annual-Conference.jpg";
 
 const EventDetailsClient = ({ eventId }: { eventId: string }) => {
     const dispatch = useDispatch<AppDispatch>();
@@ -28,7 +28,14 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
     const { myMembership } = useSelector((state: RootState) => state.frontendMembership);
     const { bookings } = useSelector((state: RootState) => state.frontendBooking);
     const [quantities, setQuantities] = useState<Record<string, number>>({});
+    const [bannerImg, setBannerImg] = useState<string>("");
     const router = useRouter();    
+
+    React.useEffect(() => {
+        if (event) {
+            setBannerImg(event.banner || event.logo || DEFAULT_EVENT_BANNER);
+        }
+    }, [event?.banner, event?.logo]);
 
     React.useEffect(() => {
         dispatch(checkAuth());
@@ -367,13 +374,22 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                             </h2>
 
                             {/* Banner Poster */}
-                            {(event?.banner || event?.logo) && (
+                            {(bannerImg || event?.banner || event?.logo) && (
                                 <div className="mb-2 overflow-hidden rounded-2 shadow-sm border">
                                     <Image
-                                        src={event?.banner || event?.logo || ""}
+                                        src={bannerImg || event?.banner || event?.logo || DEFAULT_EVENT_BANNER}
                                         alt={event?.title || "Annual Conference Banner"}
-                                        className="w-100 h-auto d-block" width={200}
-                                        height={200}
+                                        className="w-100 h-auto d-block"
+                                        width={1200}
+                                        height={500}
+                                        style={{ maxHeight: "480px", objectFit: "cover" }}
+                                        unoptimized
+                                        priority
+                                        onError={() => {
+                                            if (bannerImg !== DEFAULT_EVENT_BANNER) {
+                                                setBannerImg(DEFAULT_EVENT_BANNER);
+                                            }
+                                        }}
                                     />
                                 </div>
                             )}
