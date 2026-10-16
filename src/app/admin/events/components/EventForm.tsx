@@ -156,15 +156,23 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
-    if (!allowedTypes.includes(file.type)) {
-      setErrorMessage("Invalid file type. Only PNG, JPG, JPEG, WEBP, GIF, and SVG are allowed.");
+    // Validate extension & mime type flexibly so OS/browser policy doesn't reject valid banners
+    const extension = (file.name.split(".").pop() || "").toLowerCase();
+    const allowedExtensions = ["jpg", "jpeg", "png", "webp", "gif", "svg", "avif", "bmp", "ico"];
+    const isExtensionAllowed = allowedExtensions.includes(extension);
+    const isMimeAllowed = !file.type || file.type.startsWith("image/");
+
+    if (!isExtensionAllowed && !isMimeAllowed) {
+      setErrorMessage("Invalid file type. Only PNG, JPG, JPEG, WEBP, GIF, and SVG images are allowed.");
       event.target.value = "";
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMessage("File size exceeds 5MB limit. Please select a smaller image.");
+    // Flexible size policy: 25MB for high-resolution event banners, 10MB for logo
+    const maxSizeBytes = field === "banner" ? 25 * 1024 * 1024 : 10 * 1024 * 1024;
+    const maxSizeLabel = field === "banner" ? "25MB" : "10MB";
+    if (file.size > maxSizeBytes) {
+      setErrorMessage(`File size exceeds ${maxSizeLabel} limit. Please select an image under ${maxSizeLabel}.`);
       event.target.value = "";
       return;
     }
@@ -180,41 +188,91 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
     }
     setErrorMessage("");
 
-    try {
-      const form = new FormData();
-      form.append("file", file);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = typeof reader.result === "string" ? reader.result : "";
 
-      const response = await fetch("/local-api/upload", {
-        method: "POST",
-        body: form,
-      });
+      try {
+        let uploadedUrl = "";
+        let errorMsg = "";
 
-      if (response.ok) {
-        const resData = await response.json();
-        const uploadedUrl = resData.data?.url || resData.url;
+        // Strategy 1: JSON Base64 upload to /local-api/upload (bypasses FormData CORS & multipart boundary blocks)
+        if (base64String) {
+          try {
+            const res = await fetch("/local-api/upload", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                fileBase64: base64String,
+                fileName: file.name,
+                folder: "events",
+              }),
+            });
+            const resData = await res.json().catch(() => ({}));
+            if (res.ok && (resData.data?.url || resData.url)) {
+              uploadedUrl = resData.data?.url || resData.url;
+            } else if (resData.message) {
+              errorMsg = resData.message;
+            }
+          } catch (e: any) {
+            console.warn("Base64 upload attempt error, trying FormData fallback:", e);
+          }
+        }
+
+        // Strategy 2: FormData fallback to /local-api/upload
+        if (!uploadedUrl) {
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("folder", "events");
+
+            const res = await fetch("/local-api/upload", {
+              method: "POST",
+              body: formData,
+            });
+            const resData = await res.json().catch(() => ({}));
+            if (res.ok && (resData.data?.url || resData.url)) {
+              uploadedUrl = resData.data?.url || resData.url;
+            } else if (resData.message) {
+              errorMsg = resData.message;
+            }
+          } catch (e: any) {
+            console.warn("FormData upload attempt error:", e);
+          }
+        }
+
         if (uploadedUrl) {
           handleChange(field, uploadedUrl);
           toast.success(`${field === "banner" ? "Banner" : "Logo"} uploaded successfully`);
         } else {
-          setErrorMessage("Failed to upload file. No URL returned.");
+          setErrorMessage(errorMsg || "Failed to upload image. Please verify file policy.");
           if (field === "logo") setLogoPreview(null);
           else setBannerPreview(null);
         }
-      } else {
-        const errData = await response.json();
-        setErrorMessage(errData.message || "Failed to upload file.");
+      } catch (err: any) {
+        setErrorMessage(err.message || "Error uploading file.");
         if (field === "logo") setLogoPreview(null);
         else setBannerPreview(null);
+      } finally {
+        if (field === "logo") setUploadingLogo(false);
+        else setUploadingBanner(false);
+        event.target.value = "";
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || "Error uploading file.");
-      if (field === "logo") setLogoPreview(null);
-      else setBannerPreview(null);
-    } finally {
-      if (field === "logo") setUploadingLogo(false);
-      else setUploadingBanner(false);
+    };
+
+    reader.onerror = () => {
+      setErrorMessage("Failed to read image file.");
+      if (field === "logo") {
+        setLogoPreview(null);
+        setUploadingLogo(false);
+      } else {
+        setBannerPreview(null);
+        setUploadingBanner(false);
+      }
       event.target.value = "";
-    }
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const removeImage = async (field: "logo" | "banner", currentUrl: string) => {
@@ -530,13 +588,13 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
                   )}
 
                   <Col md={4}>
-                    <FormLabel className="fw-semibold">Logo Image <span className="text-muted small fw-normal">(Images only, Max 2MB)</span></FormLabel>
+                    <FormLabel className="fw-semibold">Logo Image <span className="text-muted small fw-normal">(Images only, Max 10MB)</span></FormLabel>
                     <InputGroup className="mb-2">
                       <label className={`btn btn-light border d-flex align-items-center bg-light text-nowrap m-0 ${uploadingLogo ? 'disabled' : ''}`} style={{ cursor: "pointer" }}>
                         <Icon icon="upload" className="fs-16 me-2 text-danger"/> Choose File
                         <input
                           type="file"
-                          accept=".png,.jpg,.jpeg,.webp"
+                          accept=".png,.jpg,.jpeg,.webp,.gif,.svg,.ico,.avif"
                           hidden
                           onChange={(e: any) => handleFileUpload("logo", e)}
                           disabled={uploadingLogo}
@@ -584,13 +642,13 @@ const EventForm: React.FC<EventFormProps> = ({ mode, eventId }) => {
                   </Col>
 
                   <Col md={4}>
-                    <FormLabel className="fw-semibold">Banner Image <span className="text-muted small fw-normal">(Images only, Max 5MB)</span></FormLabel>
+                    <FormLabel className="fw-semibold">Banner Image <span className="text-muted small fw-normal">(Images only, Max 25MB)</span></FormLabel>
                     <InputGroup className="mb-2">
                       <label className={`btn btn-light border d-flex align-items-center bg-light text-nowrap m-0 ${uploadingBanner ? 'disabled' : ''}`} style={{ cursor: "pointer" }}>
                         <Icon icon="upload" className="fs-16 me-2 text-danger"/> Choose File
                         <input
                           type="file"
-                          accept=".png,.jpg,.jpeg,.webp,.gif,.svg"
+                          accept=".png,.jpg,.jpeg,.webp,.gif,.svg,.ico,.avif"
                           hidden
                           onChange={(e: any) => handleFileUpload("banner", e)}
                           disabled={uploadingBanner}

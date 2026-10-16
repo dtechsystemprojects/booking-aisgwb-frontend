@@ -3,15 +3,20 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Cross-Origin-Resource-Policy": "cross-origin",
+};
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Cross-Origin-Resource-Policy": "cross-origin",
-    },
+    headers: corsHeaders,
   });
 }
 
@@ -29,7 +34,10 @@ export async function POST(req: Request) {
       folder = body.folder || null;
       
       if (!base64Str) {
-        return NextResponse.json({ success: false, message: "No base64 file data provided" }, { status: 400 });
+        return NextResponse.json(
+          { success: false, message: "No base64 file data provided" },
+          { status: 400, headers: corsHeaders }
+        );
       }
       
       // Extract base64 data (remove data:*;base64, prefix if present)
@@ -52,7 +60,7 @@ export async function POST(req: Request) {
       if (!file) {
         return NextResponse.json(
           { success: false, message: "No file provided" },
-          { status: 400 }
+          { status: 400, headers: corsHeaders }
         );
       }
 
@@ -68,12 +76,12 @@ export async function POST(req: Request) {
       }
     }
 
-    const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp", ".ico", ".svg", ".gif"];
+    const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp", ".ico", ".svg", ".gif", ".avif", ".bmp"];
 
     if (!allowedExtensions.includes(ext)) {
       return NextResponse.json(
-        { success: false, message: "Invalid file type. Only PNG, JPG, JPEG, WEBP, ICO, SVG, and GIF are allowed." },
-        { status: 400 }
+        { success: false, message: "Invalid file type. Only PNG, JPG, JPEG, WEBP, ICO, SVG, AVIF, and GIF are allowed." },
+        { status: 400, headers: corsHeaders }
       );
     }
     const uniqueFilename = `${crypto.randomUUID()}${ext}`;
@@ -81,7 +89,7 @@ export async function POST(req: Request) {
     if (folder && (folder.includes("..") || folder.startsWith("/") || folder.startsWith("\\"))) {
       return NextResponse.json(
         { success: false, message: "Invalid folder name" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -116,13 +124,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { success: true, data: { url }, message: "File uploaded successfully" },
-      { status: 200 }
+      { status: 200, headers: corsHeaders }
     );
   } catch (error: any) {
     console.error("Upload error:", error);
     return NextResponse.json(
       { success: false, message: error.message || "Internal server error" },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -133,7 +141,10 @@ export async function DELETE(req: Request) {
     const fileUrl = searchParams.get("fileUrl");
 
     if (!fileUrl) {
-      return NextResponse.json({ success: false, message: "No file URL provided" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "No file URL provided" },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     // Extract the filename from the URL, expecting a format like `/uploads/filename.ext` or full URL
@@ -141,7 +152,10 @@ export async function DELETE(req: Request) {
     const pathname = urlObj.pathname;
     
     if (!pathname.startsWith("/uploads/")) {
-        return NextResponse.json({ success: false, message: "Invalid file path" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Invalid file path" },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
     const filename = pathname.replace("/uploads/", "");
