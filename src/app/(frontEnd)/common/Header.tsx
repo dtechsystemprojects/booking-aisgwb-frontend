@@ -7,7 +7,7 @@ import { useLayoutContext } from "@/context/useLayoutContext";
 import useScrollEvent from "@/hooks/useScrollEvent";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSettingsContext } from "@/context/useSettingsContext";
 import Swal from "sweetalert2";
 import { useSelector } from "react-redux";
@@ -119,6 +119,36 @@ export default function Header() {
   const { scrollY } = useScrollEvent();
   const { setting } = useSettingsContext();
 
+  const [logoError, setLogoError] = useState(false);
+  const currentLogoSetting = setting("general.logo") || setting("general.logo_dark");
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [currentLogoSetting]);
+
+  const siteLogoSrc = useMemo(() => {
+    if (logoError || !currentLogoSetting) {
+      return logo;
+    }
+    if (typeof currentLogoSetting === "object" && currentLogoSetting.src) {
+      return currentLogoSetting;
+    }
+    if (typeof currentLogoSetting === "string") {
+      const clean = currentLogoSetting.trim();
+      if (!clean || clean === "null" || clean === "undefined") {
+        return logo;
+      }
+      if (clean.startsWith("http://") || clean.startsWith("https://") || clean.startsWith("data:")) {
+        return clean;
+      }
+      if (clean.startsWith("/")) {
+        return clean;
+      }
+      return `/${clean}`;
+    }
+    return logo;
+  }, [currentLogoSetting, logoError]);
+
   const [menuLoading, setMenuLoading] = useState(true);
 
   useEffect(() => {
@@ -182,9 +212,24 @@ export default function Header() {
               <div className="auth-brand mb-0">
                 <Link href="/" className="logo-dark d-flex align-items-center gap-2 text-decoration-none">
                   {isMounted ? (
-                    <Image src={setting("general.logo", logo)} alt="dark logo" height={32} width={150} style={{ objectFit: 'contain' }} />
+                    <Image
+                      src={siteLogoSrc}
+                      alt={setting("general.title", "AISGWB")}
+                      height={32}
+                      width={150}
+                      style={{ objectFit: 'contain' }}
+                      onError={() => setLogoError(true)}
+                      unoptimized
+                    />
                   ) : (
-                    <Image src={logo} alt="dark logo" height={32} width={150} style={{ objectFit: 'contain' }} />
+                    <Image
+                      src={logo}
+                      alt="dark logo"
+                      height={32}
+                      width={150}
+                      style={{ objectFit: 'contain' }}
+                      priority
+                    />
                   )}
                 </Link>
               </div>

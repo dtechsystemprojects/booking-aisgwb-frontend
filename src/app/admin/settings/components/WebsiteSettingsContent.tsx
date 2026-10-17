@@ -27,9 +27,18 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 const WebsiteSettingsContent = () => {
   const { write: canWrite, delete: canDelete } = usePageAccess("Settings");
   const { updateSettingsCache } = useSettingsContext();
-  const [settings, setSettings] = useState<WebsiteSettingItem[]>(
-    initialWebsiteSettings,
-  );
+  const [settings, setSettings] = useState<WebsiteSettingItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("website_settings_cache");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (e) {}
+    }
+    return initialWebsiteSettings;
+  });
   const [activeGroup, setActiveGroup] = useState<string>("General");
   const [isAdding, setIsAdding] = useState<boolean>(false);
   const [saveMessage, setSaveMessage] = useState<string>("");
@@ -127,10 +136,20 @@ const WebsiteSettingsContent = () => {
       }
     } catch (err: any) {
       console.warn(
-        "Server offline or unreachable. Using initial state fallback:",
+        "Server offline or unreachable. Using cached/initial state fallback:",
         err,
       );
-      setSettings(initialWebsiteSettings);
+      let fallbackSettings = initialWebsiteSettings;
+      if (typeof window !== "undefined") {
+        try {
+          const cached = localStorage.getItem("website_settings_cache");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) fallbackSettings = parsed;
+          }
+        } catch (e) {}
+      }
+      setSettings(fallbackSettings);
       setApiConnected(false);
       setApiStatusMessage("Server offline (using local fallback state)");
     } finally {
@@ -182,17 +201,20 @@ const WebsiteSettingsContent = () => {
     }
 
     // Optimistic UI update
-    setSettings((prev) =>
-      prev.map((s) =>
-        s.id === id
-          ? {
-              ...s,
-              value: newValue,
-              ...(s.type === "file" ? { previewUrl: newValue } : {}),
-            }
-          : s,
-      ),
+    const updatedSettings = settings.map((s) =>
+      s.id === id || s.key === id
+        ? {
+            ...s,
+            value: newValue,
+            ...(s.type === "file" ? { previewUrl: newValue } : {}),
+          }
+        : s,
     );
+    setSettings(updatedSettings);
+    updateSettingsCache(updatedSettings);
+
+    const targetItem = settings.find((s) => s.id === id || s.key === id);
+    const identifier = targetItem?.id || targetItem?.key || id;
 
     const token =
       typeof window !== "undefined"
@@ -204,17 +226,33 @@ const WebsiteSettingsContent = () => {
     };
 
     try {
-      let res = await fetch(`${API_URL}/admin/settings/${id}`, {
+      let res = await fetch(`${API_URL}/admin/settings/${identifier}`, {
         method: "PUT",
         headers,
-        body: JSON.stringify({ value: newValue, previewUrl: newValue }),
+        body: JSON.stringify({
+          value: newValue,
+          previewUrl: newValue,
+          key: targetItem?.key,
+        }),
       });
       if (!res.ok) {
-        await fetch(`${API_URL}/settings/${id}`, {
+        res = await fetch(`${API_URL}/settings/${identifier}`, {
           method: "PUT",
           headers,
-          body: JSON.stringify({ value: newValue, previewUrl: newValue }),
+          body: JSON.stringify({
+            value: newValue,
+            previewUrl: newValue,
+            key: targetItem?.key,
+          }),
         });
+      }
+      if (!res.ok) {
+        // Fallback to bulk-save endpoint to persist settings directly into MongoDB
+        await fetch(`${API_URL}/admin/settings/bulk-save`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ settings: updatedSettings }),
+        }).catch(() => {});
       }
     } catch (err) {
       console.warn("Failed updating setting value", err);

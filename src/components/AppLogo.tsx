@@ -1,4 +1,5 @@
 "use client";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import clsx from "clsx";
@@ -17,9 +18,24 @@ const AppLogo = () => {
     sidenavColor === "image" ||
     theme === "dark";
 
+  const [imgError, setImgError] = useState(false);
   const logoLightSrc = setting("general.logo", logo);
   const logoDarkSrc = setting("general.logo_dark", logoLightSrc);
-  const currentLogo = isDarkMenu ? logoLightSrc : logoDarkSrc;
+  const rawLogo = isDarkMenu ? logoLightSrc : logoDarkSrc;
+
+  const currentLogo = useMemo(() => {
+    if (imgError || !rawLogo) return logo;
+    if (typeof rawLogo === "object" && rawLogo.src) return rawLogo;
+    if (typeof rawLogo === "string") {
+      const clean = rawLogo.trim();
+      if (!clean || clean === "null" || clean === "undefined") return logo;
+      if (clean.startsWith("http://") || clean.startsWith("https://") || clean.startsWith("data:")) return clean;
+      if (clean.startsWith("/")) return clean;
+      return `/${clean}`;
+    }
+    return logo;
+  }, [rawLogo, imgError]);
+
   const siteTitle = setting("general.title", "AISGWB");
 
   return (
@@ -32,6 +48,8 @@ const AppLogo = () => {
             height={32}
             width={32}
             style={{ objectFit: 'contain' }}
+            onError={() => setImgError(true)}
+            unoptimized
           />
           <h5
             className={clsx("mb-0 fw-bold text-truncate", isDarkMenu ? "text-white" : "text-white")}
@@ -48,6 +66,8 @@ const AppLogo = () => {
             height={32}
             width={32}
             style={{ objectFit: 'contain' }}
+            onError={() => setImgError(true)}
+            unoptimized
           />
         </span>
       )}

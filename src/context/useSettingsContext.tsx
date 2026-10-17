@@ -26,16 +26,16 @@ export const getSettingValue = (
   const normalizedKey = key.trim();
 
   const isInvalid = (val: any) => 
-    typeof val === "string" && 
-    (val.startsWith("blob:") || val.startsWith("file:") || /^[A-Za-z]:[\\/]/.test(val));
-
+    val === null ||
+    val === undefined ||
+    (typeof val === "string" && 
+      (!val.trim() || val.startsWith("blob:") || val.startsWith("file:") || /^[A-Za-z]:[\\/]/.test(val)));
 
   // Exact match
   const exactItem = items.find(
     (s) => s.key === normalizedKey || s.id === normalizedKey,
   );
-  if (exactItem && exactItem.value !== undefined) {
-    if (isInvalid(exactItem.value)) return fallback;
+  if (exactItem && !isInvalid(exactItem.value)) {
     return exactItem.value;
   }
 
@@ -46,7 +46,7 @@ export const getSettingValue = (
   const unwrappedKey = normalizedKey.replace(/^setting\(['"](.+)['"]\)$/, "$1");
 
   const match = items.find((s) => {
-    const sUnwrapped = s.key.replace(/^setting\(['"](.+)['"]\)$/, "$1");
+    const sUnwrapped = s.key ? s.key.replace(/^setting\(['"](.+)['"]\)$/, "$1") : "";
     return (
       s.key === wrappedKey ||
       sUnwrapped === unwrappedKey ||
@@ -54,8 +54,7 @@ export const getSettingValue = (
     );
   });
 
-  if (match && match.value !== undefined) {
-    if (isInvalid(match.value)) return fallback;
+  if (match && !isInvalid(match.value)) {
     return match.value;
   }
   return fallback;
@@ -212,7 +211,8 @@ export const SettingsProvider = ({
           : Array.isArray(result)
             ? result
             : initialWebsiteSettings;
-        const cleanedItems = fetchedItems.map((s: WebsiteSettingItem) => ({
+
+        const cleanedFetched = fetchedItems.map((s: WebsiteSettingItem) => ({
           ...s,
           key: s.key
             ? String(s.key)
@@ -220,7 +220,22 @@ export const SettingsProvider = ({
                 .replace(/^setting\(['"](.+)['"]\)$/, "$1")
             : "",
         }));
-        updateSettingsCache(cleanedItems);
+
+        const mergedItems = initialWebsiteSettings.map((init) => {
+          const fetched = cleanedFetched.find(
+            (s: WebsiteSettingItem) => s.key === init.key || s.id === init.id,
+          );
+          return fetched ? { ...init, ...fetched, key: init.key } : init;
+        });
+
+        const customItems = cleanedFetched.filter(
+          (s: WebsiteSettingItem) =>
+            !initialWebsiteSettings.some(
+              (init) => init.key === s.key || init.id === s.id,
+            ),
+        );
+
+        updateSettingsCache([...mergedItems, ...customItems]);
         setApiConnected(true);
       } else {
         throw new Error("API response was not ok");

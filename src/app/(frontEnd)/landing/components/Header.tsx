@@ -6,7 +6,7 @@ import Icon from "@/components/wrappers/Icon";
 import { useLayoutContext } from "@/context/useLayoutContext";
 import useScrollEvent from "@/hooks/useScrollEvent";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSettingsContext } from "@/context/useSettingsContext";
 import {
   Button,
@@ -32,6 +32,36 @@ export default function Header() {
   const { scrollY } = useScrollEvent();
   const { setting } = useSettingsContext();
 
+  const [logoError, setLogoError] = useState(false);
+  const currentLogoSetting = setting("general.logo") || setting("general.logo_dark");
+
+  useEffect(() => {
+    setLogoError(false);
+  }, [currentLogoSetting]);
+
+  const siteLogoSrc = useMemo(() => {
+    if (logoError || !currentLogoSetting) {
+      return logo.src;
+    }
+    if (typeof currentLogoSetting === "object" && currentLogoSetting.src) {
+      return currentLogoSetting.src;
+    }
+    if (typeof currentLogoSetting === "string") {
+      const clean = currentLogoSetting.trim();
+      if (!clean || clean === "null" || clean === "undefined") {
+        return logo.src;
+      }
+      if (clean.startsWith("http://") || clean.startsWith("https://") || clean.startsWith("data:")) {
+        return clean;
+      }
+      if (clean.startsWith("/")) {
+        return clean;
+      }
+      return `/${clean}`;
+    }
+    return logo.src;
+  }, [currentLogoSetting, logoError]);
+
   return (
     <>
       <header>
@@ -43,7 +73,13 @@ export default function Header() {
           <Container>
             <div className="auth-brand mb-0">
               <Link href="/" className="logo-light d-flex align-items-center gap-2 text-decoration-none">
-                <img src={setting("general.logo", logo.src)} alt="logo" height={32} style={{ objectFit: 'contain' }} />
+                <img
+                  src={siteLogoSrc}
+                  alt={setting("general.title", "AISGWB")}
+                  height={32}
+                  style={{ objectFit: 'contain' }}
+                  onError={() => setLogoError(true)}
+                />
                 <h5 className="mb-0 text-white fw-bold text-truncate" style={{ maxWidth: '200px', fontSize: '16px' }}>{setting("general.title", "AISGWB")}</h5>
               </Link>
             </div>
