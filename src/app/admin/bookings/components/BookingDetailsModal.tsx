@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Badge, Table, Button } from 'react-bootstrap';
 import { Booking, resendBookingInvoice } from '@/redux/slices/admin/bookingSlice';
-import { useAppDispatch } from '@/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import { fetchAttendees } from '@/redux/slices/admin/attendeeSlice';
 import toast from 'react-hot-toast';
 import dayjs from 'dayjs';
 import Icon from '@/components/wrappers/Icon';
@@ -21,6 +22,13 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ show, onHide,
   const [printAttendeeData, setPrintAttendeeData] = useState<any>(null);
   const [isResending, setIsResending] = useState(false);
   const dispatch = useAppDispatch();
+  const { attendees } = useAppSelector((state) => state.attendees);
+
+  useEffect(() => {
+    if (show && booking) {
+      dispatch(fetchAttendees({ limit: 10000 }));
+    }
+  }, [show, booking, dispatch]);
 
   const [downloadingTxn, setDownloadingTxn] = useState<any>(null);
 
@@ -127,6 +135,11 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ show, onHide,
   };
 
   const handleDownloadTicket = async (bookingId: string, attendeeId: string, attendeeObj: any, eventDetails: any, ticketObj: any) => {
+    if (attendeeObj?.ticketStatus?.toLowerCase() === 'used') {
+      toast.error("This ticket has already been used and cannot be downloaded.");
+      return;
+    }
+
     setIsDownloading(attendeeId);
     
     let finalEventDetails = eventDetails;
@@ -151,20 +164,26 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ show, onHide,
     setPrintAttendeeData({
       attendee: { 
         ...attendeeObj, 
+        attendeeId,
         ticketName: ticketObj.ticketName,
         ticketPrice: (ticketObj.ticketName && ticketObj.ticketName.includes('(Under')) ? 0 : (attendeeObj.ticketPrice ?? ticketObj.price ?? ticketObj.ticketPrice ?? 0),
-        ticketStatus: attendeeObj.ticketStatus ?? attendeeObj.status ?? ticketObj.ticketStatus ?? "Unused",
+        ticketStatus: attendeeObj.ticketStatus ?? "Unused",
         ticketId: attendeeObj.ticketId || ticketObj.ticketId || ticketObj.id || ticketObj._id,
         paymentStatus: booking?.paymentStatus || "Completed",
         bookingId: booking
       },
       eventDetails: finalEventDetails,
-      bookingId
+      bookingId,
+      attendeeId
     });
 
     setTimeout(async () => {
       try {
-        const ticketEl = document.getElementById(`admin-ticket-template-${attendeeId}`);
+        const ticketEl = 
+          document.getElementById(`admin-ticket-template-${attendeeId}`) ||
+          document.getElementById(`admin-ticket-template-${attendeeObj?._id}`) ||
+          document.getElementById(`admin-ticket-template-${attendeeObj?.name}`) ||
+          document.getElementById("admin-ticket-template");
         if (ticketEl) {
           const tCanvas = await html2canvas(ticketEl, { scale: 2, useCORS: true, logging: true });
           const tImgData = tCanvas.toDataURL("image/png");
@@ -294,6 +313,7 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ show, onHide,
                 <th className="fw-semibold py-2">No.</th>
                 <th className="fw-semibold py-2">Name</th>
                 <th className="fw-semibold py-2">Ticket</th>
+                <th className="fw-semibold py-2 text-center">Status</th>
                 <th className="fw-semibold py-2 text-end pe-4">Actions</th>
               </tr>
             </thead>
@@ -302,39 +322,85 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ show, onHide,
                 t.attendees.map((attendee, aIndex) => {
                   const globalIndex = booking.tickets.slice(0, tIndex).reduce((sum, prevT) => sum + prevT.attendees.length, 0) + aIndex;
                   const attendeeNo = `${bookingIdDisplay}${globalIndex + 1}`;
+                  const bId = (booking._id || (booking as any).id)?.toString();
+                  const aId = ((attendee as any)._id || (attendee as any).id)?.toString();
+                  const aName = attendee.name?.trim().toLowerCase();
+                  const tTicketId = ((t.ticketId as any)?._id || (t.ticketId as any)?.id || t.ticketId)?.toString();
+
+                  const matched = (attendees || []).find((att: any) => {
+                    const attBookingId = (att.bookingId?._id || att.bookingId?.id || att.bookingId)?.toString();
+                    if (attBookingId && bId && attBookingId !== bId) return false;
+                    if (aId && (att._id?.toString() === aId || att.id?.toString() === aId)) return true;
+
+                    const attTicketId = (att.ticketId?._id || att.ticketId?.id || att.ticketId)?.toString();
+                    const ticketMatches = !tTicketId || !attTicketId || attTicketId === tTicketId;
+                    const nameMatches = att.name && aName && att.name.trim().toLowerCase() === aName;
+
+                    if (attBookingId && bId && attBookingId === bId && ticketMatches && nameMatches) {
+                      return true;
+                    }
+                    if (attBookingId && bId && attBookingId === bId && nameMatches) {
+                      return true;
+                    }
+                    return false;
+                  });
+
+                  const ticketStatus: string = matched?.ticketStatus || (attendee as any).ticketStatus || "Unused";
+                  const isUsed = ticketStatus.toLowerCase() === "used";
+
                   return (
                     <tr key={attendeeNo}>
                       <td className="py-2 text-muted">{attendeeNo}</td>
                       <td className="py-2 text-muted">{attendee.name || '-'}</td>
                       <td className="py-2 text-muted">{t.ticketName || 'Ticket'}</td>
-                      <td className="text-end pe-4 py-2">
-                        <Button 
-                          variant="light" 
-                          size="sm" 
-                          className="btn-icon border bg-transparent text-secondary p-1 rounded-2 shadow-none"
-                          onClick={() => handleDownloadTicket(
-                            booking._id || (booking as any).id,
-                            (attendee as any)._id || attendeeNo,
-                            attendee,
-                            booking.eventId,
-                            t
-                          )}
-                          disabled={isDownloading === ((attendee as any)._id || attendeeNo)}
+                      <td className="py-2 text-center">
+                        <Badge
+                          bg={
+                            ticketStatus === 'Used' ? 'primary-subtle' :
+                            ticketStatus === 'Cancelled' ? 'danger-subtle' : 'success-subtle'
+                          }
+                          text={
+                            ticketStatus === 'Used' ? 'primary' :
+                            ticketStatus === 'Cancelled' ? 'danger' : 'success'
+                          }
+                          className="px-2 py-1 fs-12 rounded-pill fw-semibold"
                         >
-                          {isDownloading === ((attendee as any)._id || attendeeNo) ? (
-                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                          ) : (
-                            <Icon icon="eye" className="fs-16" />
-                          )}
-                        </Button>
+                          {ticketStatus}
+                        </Badge>
+                      </td>
+                      <td className="text-end pe-4 py-2">
+                        {!isUsed ? (
+                          <Button 
+                            variant="light" 
+                            size="sm" 
+                            className="btn-icon border bg-transparent text-secondary p-1 rounded-2 shadow-none"
+                            onClick={() => handleDownloadTicket(
+                              booking._id || (booking as any).id,
+                              (attendee as any)._id || attendeeNo,
+                              { ...attendee, ticketStatus },
+                              booking.eventId,
+                              t
+                            )}
+                            disabled={isDownloading === ((attendee as any)._id || attendeeNo)}
+                            title="Download Ticket"
+                          >
+                            {isDownloading === ((attendee as any)._id || attendeeNo) ? (
+                              <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            ) : (
+                              <Icon icon="eye" className="fs-16" />
+                            )}
+                          </Button>
+                        ) : (
+                          <span className="text-muted fs-12">-</span>
+                        )}
                       </td>
                     </tr>
-                  )
+                  );
                 })
               )}
               {(!booking.tickets || booking.tickets.length === 0 || booking.tickets.every(t => !t.attendees || t.attendees.length === 0)) && (
                 <tr>
-                  <td colSpan={4} className="text-center text-muted py-3">No attendees found</td>
+                  <td colSpan={5} className="text-center text-muted py-3">No attendees found</td>
                 </tr>
               )}
             </tbody>
@@ -345,7 +411,7 @@ const BookingDetailsModal: React.FC<BookingDetailsModalProps> = ({ show, onHide,
 
     {printAttendeeData && (
       <div style={{ position: "absolute", top: "-9999px", left: "-9999px" }}>
-        <div id={`admin-ticket-template-${printAttendeeData.attendee._id || printAttendeeData.attendee.id || printAttendeeData.attendee.name}`}>
+        <div id={`admin-ticket-template-${printAttendeeData.attendeeId || printAttendeeData.attendee._id || printAttendeeData.attendee.id || printAttendeeData.attendee.name}`}>
           <TicketTemplate 
             attendee={printAttendeeData.attendee} 
             eventDetails={printAttendeeData.eventDetails} 

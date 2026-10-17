@@ -570,12 +570,12 @@ const AttendeeListContent: React.FC = () => {
                 </Button>
               </OverlayTrigger>
             )}
-
-            <Dropdown>
-              <Dropdown.Toggle 
-                variant="light" 
-                size="sm" 
-                className="btn-icon hide-arrow border"
+            {info.row.original.ticketStatus !== 'Used' && (
+              <Dropdown>
+                <Dropdown.Toggle 
+                  variant="light" 
+                  size="sm" 
+                  className="btn-icon hide-arrow border"
                 disabled={resendingTicketId === (info.row.original._id || info.row.original.id)}
               >
                 {resendingTicketId === (info.row.original._id || info.row.original.id) ? (
@@ -613,6 +613,7 @@ const AttendeeListContent: React.FC = () => {
                 )}
               </Dropdown.Menu>
             </Dropdown>
+            )}
           </div>
         ),
       }),

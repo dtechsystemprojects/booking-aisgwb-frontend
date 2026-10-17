@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Modal, Button, Row, Col } from "react-bootstrap";
+import { Modal, Button, Row, Col, Badge } from "react-bootstrap";
 import { AttendeeRecord } from "@/app/admin/dataStore";
 import { useAppSelector } from "@/redux/hooks";
 import { useSettingsContext } from "@/context/useSettingsContext";
@@ -45,7 +45,14 @@ const AttendeeViewModal: React.FC<AttendeeViewModalProps> = ({
     : (attendee.eventId?._id || attendee.eventId?.id);
   let eventDetails = events.find((e: any) => (e._id || e.id) === eventIdStr) || attendee.eventId;
 
+  const isUsed = (attendee.ticketStatus || attendee.status)?.toLowerCase() === 'used';
+
   const handleDownloadTicket = async () => {
+    if (isUsed) {
+      toast.error("This ticket has already been used and cannot be downloaded.");
+      return;
+    }
+
     setIsDownloading(true);
 
     if (!eventDetails?.venueLocation && !eventDetails?.venue) {
@@ -132,19 +139,25 @@ const AttendeeViewModal: React.FC<AttendeeViewModalProps> = ({
             style={{ borderColor: "#e9ecef", borderStyle: "dashed", borderWidth: "1px" }}
           ></div>
 
-          <Button
-            variant="primary"
-            className="px-4 py-2 mt-2 d-inline-flex align-items-center gap-2"
-            style={{ backgroundColor: '#6f42c1', borderColor: '#6f42c1' }}
-            onClick={handleDownloadTicket}
-            disabled={isDownloading}
-          >
-            {isDownloading ? (
-              <><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Downloading...</>
-            ) : (
-              "Download PDF"
-            )}
-          </Button>
+          {!isUsed ? (
+            <Button
+              variant="primary"
+              className="px-4 py-2 mt-2 d-inline-flex align-items-center gap-2"
+              style={{ backgroundColor: '#6f42c1', borderColor: '#6f42c1' }}
+              onClick={handleDownloadTicket}
+              disabled={isDownloading}
+            >
+              {isDownloading ? (
+                <><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Downloading...</>
+              ) : (
+                "Download PDF"
+              )}
+            </Button>
+          ) : (
+            <Badge bg="primary-subtle" text="primary" className="px-3 py-2 fs-13 rounded-pill fw-semibold mt-2">
+              Ticket Used
+            </Badge>
+          )}
         </Modal.Body>
       </Modal>
 

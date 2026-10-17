@@ -36,11 +36,22 @@ const Booking = () => {
   const [selectedTicket, setSelectedTicket] = useState<OrderItem | null>(null);
   const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [printAttendeeData, setPrintAttendeeData] = useState<{ attendee: any, eventDetails: any, bookingId: string } | null>(null);
+  const [attendeesList, setAttendeesList] = useState<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     setIsLoaded(true);
     dispatch(fetchFrontendBookings());
+
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+    fetch(`${API_BASE_URL}/events/attendees`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && Array.isArray(data.data)) {
+          setAttendeesList(data.data);
+        }
+      })
+      .catch((err) => console.error("Error fetching attendees:", err));
   }, [dispatch]);
 
   if (!isLoaded) return null; // Avoid hydration mismatch
@@ -55,7 +66,7 @@ const Booking = () => {
         ...attendeeObj, 
         ticketName: ticketObj.ticketName,
         ticketPrice: attendeeObj.ticketPrice ?? ticketObj.price ?? ticketObj.ticketPrice,
-        ticketStatus: attendeeObj.ticketStatus ?? attendeeObj.status ?? ticketObj.ticketStatus ?? "Unused",
+        ticketStatus: attendeeObj.ticketStatus ?? "Unused",
         ticketId: attendeeObj.ticketId || ticketObj.ticketId || ticketObj.id || ticketObj._id,
         paymentStatus: attendeeObj.paymentStatus || ticketObj.paymentStatus || bookings.find((b: any) => b._id === bookingId || b.id === bookingId)?.paymentStatus
       },
@@ -65,7 +76,11 @@ const Booking = () => {
 
     setTimeout(async () => {
       try {
-        const ticketEl = document.getElementById(`profile-ticket-template-${attendeeId}`);
+        const ticketEl = 
+          document.getElementById(`profile-ticket-template-${attendeeId}`) ||
+          document.getElementById(`profile-ticket-template-${attendeeObj?._id}`) ||
+          document.getElementById("profile-ticket-template");
+
         if (ticketEl) {
           const tCanvas = await html2canvas(ticketEl, { scale: 2, useCORS: true, logging: true });
           const tImgData = tCanvas.toDataURL("image/png");
@@ -84,22 +99,62 @@ const Booking = () => {
         setIsDownloading(null);
         setPrintAttendeeData(null);
       }
-    }, 500);
+    }, 1000);
   };
 
   // Map Redux Bookings to UI Format
-  const orders: OrderItem[] = bookings.map((b: any) => ({
-    id: b._id,
-    eventName: b.eventId?.title || "Unknown Event",
-    bookingDate: dayjs(b.createdAt).format('DD MMMM YYYY, hh:mm A'),
-    eventDate: b.eventId?.startDate ? dayjs(b.eventId.startDate).format('DD MMM YYYY, hh:mm A') : "",
-    venue: b.eventId?.venueLocation || "TBD",
-    attendeesCount: Array.isArray(b.tickets) ? b.tickets.reduce((acc: number, t: any) => acc + (t.quantity || 1), 0) : 1,
-    totalPrice: `₹ ${b.totalAmount || 0}`,
-    status: (b.paymentStatus === 'Completed' || b.paymentStatus === 'Failed' || b.paymentStatus === 'Free') ? b.paymentStatus : 'Pending',
-    category: b.eventId?.category || "Event",
-    rawBooking: b,
-  }));
+  const orders: OrderItem[] = bookings.map((b: any) => {
+    const bId = (b._id || b.id)?.toString();
+    const enrichedTickets = (b.tickets || []).map((t: any) => {
+      const tTicketId = (t.ticketId?._id || t.ticketId?.id || t.ticketId)?.toString();
+      const enrichedAttendees = (t.attendees || []).map((a: any) => {
+        const aId = (a._id || a.id)?.toString();
+        const aName = a.name?.trim().toLowerCase();
+
+        // Match with attendee record from database
+        const matched = attendeesList.find((att: any) => {
+          const attBookingId = (att.bookingId?._id || att.bookingId?.id || att.bookingId)?.toString();
+          if (attBookingId && bId && attBookingId !== bId) return false;
+          if (aId && (att._id === aId || att.id === aId)) return true;
+
+          const attTicketId = (att.ticketId?._id || att.ticketId?.id || att.ticketId)?.toString();
+          const sameTicket = !attTicketId || !tTicketId || attTicketId === tTicketId;
+          const sameName = att.name && aName && att.name.trim().toLowerCase() === aName;
+          return sameTicket && sameName;
+        });
+
+        const ticketStatus = a.ticketStatus || matched?.ticketStatus || "Unused";
+
+        return {
+          ...a,
+          ticketStatus,
+          status: ticketStatus,
+          attendeeRecordId: matched?._id || a._id,
+        };
+      });
+
+      return {
+        ...t,
+        attendees: enrichedAttendees,
+      };
+    });
+
+    return {
+      id: b._id,
+      eventName: b.eventId?.title || "Unknown Event",
+      bookingDate: dayjs(b.createdAt).format('DD MMMM YYYY, hh:mm A'),
+      eventDate: b.eventId?.startDate ? dayjs(b.eventId.startDate).format('DD MMM YYYY, hh:mm A') : "",
+      venue: b.eventId?.venueLocation || "TBD",
+      attendeesCount: Array.isArray(b.tickets) ? b.tickets.reduce((acc: number, t: any) => acc + (t.quantity || 1), 0) : 1,
+      totalPrice: `₹ ${b.totalAmount || 0}`,
+      status: (b.paymentStatus === 'Completed' || b.paymentStatus === 'Failed' || b.paymentStatus === 'Free') ? b.paymentStatus : 'Pending',
+      category: b.eventId?.category || "Event",
+      rawBooking: {
+        ...b,
+        tickets: enrichedTickets,
+      },
+    };
+  });
 
   const filteredOrders = orders.filter((ord) => {
     const matchesSearch =
@@ -284,23 +339,34 @@ const Booking = () => {
                     <th className="fw-semibold border-0 rounded-start">No.</th>
                     <th className="fw-semibold border-0">Name</th>
                     <th className="fw-semibold border-0">Ticket</th>
+                    <th className="fw-semibold border-0 text-center">Ticket Status</th>
                     <th className="fw-semibold border-0 text-center">QR Code</th>
                     <th className="fw-semibold border-0 text-center rounded-end">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedTicket?.rawBooking?.tickets?.flatMap((t: any, tIndex: number) => 
+                  {(orders.find((ord) => ord.id === selectedTicket?.id)?.rawBooking || selectedTicket?.rawBooking)?.tickets?.flatMap((t: any, tIndex: number) => 
                     (t.attendees || [{ _id: 'dummy', name: 'Attendee' }]).map((a: any, aIndex: number) => {
-                      const rowNo = `${selectedTicket.id.substring(selectedTicket.id.length - 4).toUpperCase()}${tIndex + 1}${aIndex + 1}`;
+                      const rowNo = `${selectedTicket!.id.substring(selectedTicket!.id.length - 4).toUpperCase()}${tIndex + 1}${aIndex + 1}`;
+                      const isUsed = a.ticketStatus === "Used";
                       return (
                         <tr key={a._id || rowNo}>
                           <td className="text-muted small">{rowNo}</td>
                           <td className="text-muted small">{a.name}</td>
                           <td className="text-muted small">{t.ticketName}</td>
                           <td className="text-center">
+                            <span className={`badge ${
+                              isUsed ? 'bg-primary text-primary border-primary' : 
+                              a.ticketStatus === 'Cancelled' ? 'bg-danger text-danger border-danger' : 
+                              'bg-success text-success border-success'
+                            } bg-opacity-10 border border-opacity-25 px-2.5 py-1.5 rounded-pill`}>
+                              {a.ticketStatus || "Unused"}
+                            </span>
+                          </td>
+                          <td className="text-center">
                             <Image
                               src={`https://api.qrserver.com/v1/create-qr-code/?size=64x64&data=${encodeURIComponent(
-                                `${typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')}/admin/attendees/scanner?eventId=${typeof selectedTicket?.rawBooking?.eventId === 'string' ? selectedTicket.rawBooking.eventId : (selectedTicket?.rawBooking?.eventId?._id || selectedTicket?.rawBooking?.eventId?.id || '')}&attendeeId=${a._id || a.id || ''}&ticketId=${typeof t.ticketId === 'string' ? t.ticketId : (t.ticketId?._id || t.ticketId?.id || '')}`
+                                `${typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')}/admin/attendees/scanner?eventId=${typeof selectedTicket?.rawBooking?.eventId === 'string' ? selectedTicket.rawBooking.eventId : (selectedTicket?.rawBooking?.eventId?._id || selectedTicket?.rawBooking?.eventId?.id || '')}&attendeeId=${a.attendeeRecordId || a._id || a.id || ''}&ticketId=${typeof t.ticketId === 'string' ? t.ticketId : (t.ticketId?._id || t.ticketId?.id || '')}`
                               )}`}
                               alt="QR Code"
                               width="64"
@@ -309,22 +375,24 @@ const Booking = () => {
                             />
                           </td>
                           <td className="text-center">
-                            <OverlayTrigger
-                              placement="top"
-                              overlay={<Tooltip id={`tooltip-ticket-${a._id || a.id}`}>View Ticket PDF</Tooltip>}
-                            >
-                              <button
-                                className="btn btn-sm btn-light text-primary border rounded"
-                                onClick={() => handleDownloadTicket(selectedTicket.id, a._id, a, selectedTicket.rawBooking.eventId, t)}
-                                disabled={isDownloading === a._id}
+                            {!isUsed && (
+                              <OverlayTrigger
+                                placement="top"
+                                overlay={<Tooltip id={`tooltip-ticket-${a._id || a.id}`}>View Ticket PDF</Tooltip>}
                               >
-                                {isDownloading === a._id ? (
-                                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                ) : (
-                                  <IconifyIcon icon="lucide:eye" width="16" />
-                                )}
-                              </button>
-                            </OverlayTrigger>
+                                <button
+                                  className="btn btn-sm btn-light text-primary border rounded"
+                                  onClick={() => handleDownloadTicket(selectedTicket!.id, a.attendeeRecordId || a._id, a, selectedTicket!.rawBooking.eventId, t)}
+                                  disabled={isDownloading === (a.attendeeRecordId || a._id)}
+                                >
+                                  {isDownloading === (a.attendeeRecordId || a._id) ? (
+                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                  ) : (
+                                    <IconifyIcon icon="lucide:eye" width="16" />
+                                  )}
+                                </button>
+                              </OverlayTrigger>
+                            )}
                           </td>
                         </tr>
                       );
@@ -340,14 +408,18 @@ const Booking = () => {
       {/* Hidden Ticket Template for PDF Generation */}
       {printAttendeeData && (
         <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
-          <div id={`profile-ticket-template-${printAttendeeData.attendee._id || printAttendeeData.attendee.id}`}>
-            <TicketTemplate 
-              attendee={printAttendeeData.attendee} 
-              eventDetails={printAttendeeData.eventDetails} 
-              user={user} 
-              bookingId={printAttendeeData.bookingId} 
-              pdfMode={true}
-            />
+          <div 
+            id={`profile-ticket-template-${printAttendeeData.attendee._id || printAttendeeData.attendee.id || ""}`}
+          >
+            <div id="profile-ticket-template">
+              <TicketTemplate 
+                attendee={printAttendeeData.attendee} 
+                eventDetails={printAttendeeData.eventDetails} 
+                user={user} 
+                bookingId={printAttendeeData.bookingId} 
+                pdfMode={true}
+              />
+            </div>
           </div>
         </div>
       )}
