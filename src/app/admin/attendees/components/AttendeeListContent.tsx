@@ -601,7 +601,7 @@ const AttendeeListContent: React.FC = () => {
                     </>
                   )}
                 </Dropdown.Item>
-                {canDelete && info.row.original.ticketStatus !== 'Used' && (
+                {canDelete && (
                   <>
                     <Dropdown.Item 
                       className="text-danger d-flex align-items-center gap-2" 
