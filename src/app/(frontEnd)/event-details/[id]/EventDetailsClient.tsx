@@ -413,7 +413,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                     <Card.Body className="py-3 px-4">
                                         <div className="d-flex align-items-center gap-2">
                                             <span className="fw-bold text-primary">Venue :</span>
-                                            <span className="text-secondary">{event?.venueLocation || ""}</span>
+                                            <span className="text-secondary fw-bold">{event?.venueLocation || ""}</span>
                                         </div>
                                     </Card.Body>
                                 </Card>
@@ -473,12 +473,12 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                                 <span className="fw-bold text-primary me-1">
                                                                     {ticket.name}
                                                                 </span>
-                                                                <span className="text-muted small" style={{ fontSize: "0.78rem" }}>
+                                                                <span className="text-muted small d-block d-md-none">
                                                                     ({ticket.seatsRemaining} seats remaining)
                                                                 </span>
                                                                 {status.isUpcoming && (
                                                                     <div className="text-primary small mt-1 fw-semibold">
-                                                                        <IconifyIcon icon="lucide:calendar" className="me-1" style={{ verticalAlign: "-0.15em" }} /> For Registration (Starts {status.startFormatted} )
+                                                                        <IconifyIcon icon="lucide:calendar" className="me-1" /> For Registration (Starts {status.startFormatted} )
                                                                     </div>
                                                                 )}
                                                                 {!status.isUpcoming && (status.ticketCloseFormatted || status.endFormatted) && (

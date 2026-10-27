@@ -220,7 +220,7 @@ const CheckoutClient = () => {
 
     const processedTickets = React.useMemo(() => {
         if (!tickets || tickets.length === 0) return [];
-        const result: {name: string, quantity: number, price: number, originalId?: any}[] = [];
+        const result: {name: string, quantity: number, price: number, originalId?: any, groupId?: any, isAccompanying?: boolean}[] = [];
         
         attendees.forEach(a => {
             const ticket = tickets.find(t => t.name === a.ticketName);
@@ -234,11 +234,21 @@ const CheckoutClient = () => {
                 if (existing) {
                     existing.quantity += 1;
                 } else {
+                    const accPersonGroupId = process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID;
+                    const tGroupIdStr = ((ticket as any).groupId as any)?._id || (ticket as any).groupId || "";
+                    const isAccompanying = Boolean(
+                        (accPersonGroupId && tGroupIdStr === accPersonGroupId) ||
+                        ticket.name?.toLowerCase().includes('accompany') ||
+                        !a.isPrimary
+                    );
+
                     result.push({
                         name: finalName,
                         quantity: 1,
                         price: finalPrice,
-                        originalId: ticket.id || (ticket as any)._id
+                        originalId: ticket.id || (ticket as any)._id,
+                        groupId: (ticket as any).groupId,
+                        isAccompanying
                     });
                 }
             }

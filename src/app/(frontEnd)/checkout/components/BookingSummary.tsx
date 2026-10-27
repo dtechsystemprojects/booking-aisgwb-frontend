@@ -15,6 +15,8 @@ interface Ticket {
     name: string;
     quantity: number;
     price: number;
+    groupId?: any;
+    isAccompanying?: boolean;
 }
 
 interface BookingSummaryProps {
@@ -71,12 +73,23 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({
 
                     <div className="bg-body-secondary bg-opacity-50 rounded-4 p-2 mb-2">
                         {tickets && tickets.length > 0 ? (
-                            tickets.map((t, idx) => (
-                                <div key={idx} className="d-flex justify-content-between align-items-center mb-3 fs-sm">
-                                    <span className="text-muted fw-medium">{t.name} (x{t.quantity})</span>
-                                    <span className="fw-bold text-dark">₹{(t.price * t.quantity).toLocaleString("en-IN")}</span>
-                                </div>
-                            ))
+                            tickets.map((t, idx) => {
+                                const isAccompanying = Boolean(
+                                    t.isAccompanying ||
+                                    t.name?.toLowerCase().includes('accompany') ||
+                                    (process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID &&
+                                        ((t.groupId as any)?._id || t.groupId) === process.env.NEXT_PUBLIC_ACCOMPANYING_PERSON_GROUP_ID)
+                                );
+
+                                return (
+                                    <div key={idx} className="d-flex justify-content-between align-items-center mb-3 fs-sm">
+                                        <span className="text-muted fw-medium">
+                                            {t.name}{isAccompanying ? ` (x${t.quantity})` : ''}
+                                        </span>
+                                        <span className="fw-bold text-dark">₹{(t.price * t.quantity).toLocaleString("en-IN")}</span>
+                                    </div>
+                                );
+                            })
                         ) : (
                             <>
                                 <div className="d-flex justify-content-between align-items-center mb-3 fs-sm">
