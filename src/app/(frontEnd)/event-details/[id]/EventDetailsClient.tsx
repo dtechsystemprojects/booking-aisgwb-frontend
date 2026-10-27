@@ -380,9 +380,6 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                         src={bannerImg || event?.banner || event?.logo || DEFAULT_EVENT_BANNER}
                                         alt={event?.title || "Annual Conference Banner"}
                                         className="w-100 h-auto d-block"
-                                        width={1200}
-                                        height={500}
-                                        style={{ maxHeight: "480px", objectFit: "cover" }}
                                         unoptimized
                                         priority
                                         onError={() => {
@@ -433,14 +430,7 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                 </p>
                                                 <button
                                                     type="button"
-                                                    className="btn w-100 py-2 fw-bold text-uppercase"
-                                                    style={{
-                                                        backgroundColor: "#d0d5dd",
-                                                        borderColor: "#d0d5dd",
-                                                        color: "#667085",
-                                                        cursor: "not-allowed",
-                                                        borderRadius: "6px"
-                                                    }}
+                                                    className="btn w-100 py-2 fw-bold text-uppercase bg-danger text-white border-danger rounded-3"
                                                     disabled
                                                 >
                                                     Registration Closed
