@@ -19,7 +19,7 @@ import Swal from "sweetalert2";
 import { Icon as IconifyIcon } from "@iconify/react";
 dayjs.extend(customParseFormat);
 
-const DEFAULT_EVENT_BANNER = "https://aisgwb.org/aisgwb/wp-content/uploads/2025/12/29th-annual-Conference.jpg";
+const DEFAULT_EVENT_BANNER = "https://aisgwb.org/wp-content/uploads/2026/11/30th-annual-conference-2027.webp";
 
 const EventDetailsClient = ({ eventId }: { eventId: string }) => {
     const dispatch = useDispatch<AppDispatch>();
@@ -376,12 +376,10 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                             {/* Banner Poster */}
                             {(bannerImg || event?.banner || event?.logo) && (
                                 <div className="mb-2 overflow-hidden rounded-2 shadow-sm border">
-                                    <Image
+                                    <img
                                         src={bannerImg || event?.banner || event?.logo || DEFAULT_EVENT_BANNER}
                                         alt={event?.title || "Annual Conference Banner"}
                                         className="w-100 h-auto d-block"
-                                        unoptimized
-                                        priority
                                         onError={() => {
                                             if (bannerImg !== DEFAULT_EVENT_BANNER) {
                                                 setBannerImg(DEFAULT_EVENT_BANNER);
@@ -438,19 +436,17 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                             </div>
                                         ) : (
                                             <>
-                                                {isAuthenticated && (
-                                                    <>
-                                                        {ticketsLoading && (
-                                                            <div className="text-center py-3">
-                                                                <Spinner animation="border" size="sm" variant="primary" />
-                                                                <span className="ms-2">Loading tickets...</span>
-                                                            </div>
-                                                        )}
-                                                        {!ticketsLoading && visibleTickets.length === 0 && (
-                                                            <div className="text-center py-3 text-muted">
-                                                                No tickets available.
-                                                            </div>
-                                                        )}
+                                                {ticketsLoading && (
+                                                    <div className="text-center py-3">
+                                                        <Spinner animation="border" size="sm" variant="primary" />
+                                                        <span className="ms-2">Loading tickets...</span>
+                                                    </div>
+                                                )}
+                                                {!ticketsLoading && visibleTickets.length === 0 && (
+                                                    <div className="text-center py-3 text-muted">
+                                                        No tickets available.
+                                                    </div>
+                                                )}
                                                 {!ticketsLoading && visibleTickets.map((ticket) => {
                                                     const qty = quantities[ticket.id] || 0;
                                                     const subtotal = qty * ticket.price;
@@ -543,8 +539,6 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                     <span>Quantity: {totalQuantity}</span>
                                                     <span>Total: {formatCurrency(totalPrice)}</span>
                                                 </div>
-                                            </>
-                                        )}
 
                                         {isAuthenticated ? (
                                         <button
@@ -656,6 +650,25 @@ const EventDetailsClient = ({ eventId }: { eventId: string }) => {
                                                 borderRadius: "6px"
                                             }}
                                             onClick={() => {
+                                                if (totalQuantity > 0) {
+                                                    const selectedTickets = validTickets.filter(t => (quantities[t.id] || 0) > 0);
+                                                    const checkoutData = {
+                                                        event: {
+                                                            id: event?._id || event?.id || eventId,
+                                                            title: event?.title || "",
+                                                            date: event?.startDate || "",
+                                                            startTime: event?.startTime || "",
+                                                            venue: event?.venueLocation || "",
+                                                        },
+                                                        totalQuantity,
+                                                        totalPrice,
+                                                        tickets: selectedTickets.map(t => ({
+                                                            ...t,
+                                                            quantity: quantities[t.id]
+                                                        }))
+                                                    };
+                                                    sessionStorage.setItem("checkoutData", JSON.stringify(checkoutData));
+                                                }
                                                 router.push(`/login?next=/event-details/${eventId}`);
                                             }}
                                         >
